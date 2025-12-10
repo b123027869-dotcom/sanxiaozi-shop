@@ -1,5 +1,5 @@
 // server.js
-// 三小子店 - 簡單版後端：Express + SQLite（better-sqlite3）
+// 簡單版後端：Express + SQLite（better-sqlite3）
 
 const express = require('express');
 const cors = require('cors');
@@ -7,9 +7,8 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// ================== 資料庫初始化 ==================
+const PORT = process.env.PORT || 3000;
 
 // 開 SQLite 資料庫檔案（不存在會自動建立）
 const dbFile = path.join(__dirname, 'shop.db');
@@ -20,7 +19,7 @@ function initDb() {
   db.pragma('foreign_keys = ON');
   db.pragma('journal_mode = WAL');
 
-  db.exec(`
+  const sql = `
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,             -- 訂單編號，例如 ND202512100001
       created_at TEXT NOT NULL,        -- ISO 時間字串
@@ -56,19 +55,24 @@ function initDb() {
       price_note TEXT,
       stocks_json TEXT                 -- JSON：{ "usagi": 10, "kuri": 5, ... }
     );
-  ');
+  `;
+
+  db.exec(sql);
 }
 
 initDb();
 
-// ================== 中介層設定 ==================
+// 中介層
+app.use(cors());           // 開放 CORS，方便你從 file:// 或別的網域呼叫
+app.use(express.json());   // 解析 JSON body
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(cors());             // 開放 CORS，方便從前端或別的網域呼叫
-app.use(express.json());     // 解析 JSON body
-app.use(express.static(path.join(__dirname, 'public'))); // 提供 /public 靜態檔案
+// 簡單健康檢查（可選）
+app.get('/api/ping', (req, res) => {
+  res.json({ ok: true, time: new Date().toISOString() });
+});
 
-// ================== 小工具：產生訂單編號 ==================
-
+// ====== 工具：產生訂單編號 ======
 function generateOrderId() {
   const now = new Date();
   const y = now.getFullYear();
@@ -92,22 +96,14 @@ function generateOrderId() {
   return prefix + String(index).padStart(4, '0');
 }
 
-// ================== 健康檢查 ==================
-
-app.get('/api/ping', (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
-});
-
-// ================== 訂單相關 API ==================
-
-// 取得所有訂單（含品項）
+// ====== API：取得所有訂單（含品項） ======
 app.get('/api/orders', (req, res) => {
   try {
     const orders = db.prepare('SELECT * FROM orders').all();
     const items = db.prepare('SELECT * FROM order_items').all();
 
     const itemsByOrder = {};
-    items.forEach((it) => {
+    items.forEach(it => {
       if (!itemsByOrder[it.order_id]) itemsByOrder[it.order_id] = [];
       itemsByOrder[it.order_id].push({
         productId: it.product_id,
@@ -115,11 +111,11 @@ app.get('/api/orders', (req, res) => {
         specLabel: it.spec_label,
         name: it.name,
         price: it.price,
-        qty: it.qty,
+        qty: it.qty
       });
     });
 
-    const result = orders.map((o) => ({
+    const result = orders.map(o => ({
       id: o.id,
       createdAt: o.created_at,
       completedAt: o.completed_at,
@@ -133,9 +129,9 @@ app.get('/api/orders', (req, res) => {
         address: o.address,
         ship: o.ship,
         pay: o.pay,
-        note: o.note,
+        note: o.note
       },
-      items: itemsByOrder[o.id] || [],
+      items: itemsByOrder[o.id] || []
     }));
 
     res.json(result);
@@ -145,7 +141,7 @@ app.get('/api/orders', (req, res) => {
   }
 });
 
-// 新增訂單（前台結帳會呼叫）
+// ====== API：新增訂單（前台結帳會呼叫） ======
 app.post('/api/orders', (req, res) => {
   try {
     const { items, customer } = req.body || {};
@@ -154,13 +150,11 @@ app.post('/api/orders', (req, res) => {
       return res.status(400).json({ error: 'items 必須是非空陣列' });
     }
     if (!customer || !customer.name || !customer.phone || !customer.email) {
-      return res
-        .status(400)
-        .json({ error: 'customer 資料不完整（姓名 / 電話 / Email 必填）' });
+      return res.status(400).json({ error: 'customer 資料不完整（姓名 / 電話 / Email 必填）' });
     }
 
     let totalAmount = 0;
-    items.forEach((it) => {
+    items.forEach(it => {
       const price = Number(it.price) || 0;
       const qty = Number(it.qty) || 0;
       totalAmount += price * qty;
@@ -201,10 +195,10 @@ app.post('/api/orders', (req, res) => {
         ship: customer.ship || '',
         pay: customer.pay || '',
         note: customer.note || '',
-        total_amount: totalAmount,
+        total_amount: totalAmount
       });
 
-      items.forEach((it) => {
+      items.forEach(it => {
         insertItem.run({
           order_id: id,
           product_id: it.productId,
@@ -212,7 +206,7 @@ app.post('/api/orders', (req, res) => {
           spec_label: it.specLabel || '',
           name: it.name || '',
           price: Number(it.price) || 0,
-          qty: Number(it.qty) || 0,
+          qty: Number(it.qty) || 0
         });
       });
     });
@@ -223,7 +217,7 @@ app.post('/api/orders', (req, res) => {
       id,
       createdAt: nowIso,
       status: 'pending',
-      totalAmount,
+      totalAmount
     });
   } catch (err) {
     console.error('POST /api/orders error', err);
@@ -231,7 +225,7 @@ app.post('/api/orders', (req, res) => {
   }
 });
 
-// 變更訂單狀態（後台改「已完結」用）
+// ====== API：變更訂單狀態（後台改「已完結」用） ======
 app.patch('/api/orders/:id/status', (req, res) => {
   try {
     const orderId = req.params.id;
@@ -251,33 +245,26 @@ app.patch('/api/orders/:id/status', (req, res) => {
     const info = stmt.run({
       id: orderId,
       status,
-      completed_at: nowIso,
+      completed_at: nowIso
     });
 
     if (info.changes === 0) {
       return res.status(404).json({ error: '找不到此訂單' });
     }
 
-    res.json({
-      id: orderId,
-      status,
-      completedAt: status === 'completed' ? nowIso : null,
-    });
+    res.json({ id: orderId, status, completedAt: status === 'completed' ? nowIso : null });
   } catch (err) {
     console.error('PATCH /api/orders/:id/status error', err);
     res.status(500).json({ error: 'Failed to update order status.' });
   }
 });
 
-// ================== 商品狀態 API ==================
-
-// 取得所有商品狀態（價格 + 每款庫存）
+// ====== API：取得所有商品狀態（價格 + 每款庫存） ======
 app.get('/api/product-state', (req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM product_state').all();
     const result = {};
-
-    rows.forEach((r) => {
+    rows.forEach(r => {
       let stocks = {};
       if (r.stocks_json) {
         try {
@@ -289,10 +276,9 @@ app.get('/api/product-state', (req, res) => {
       result[r.product_id] = {
         price: r.price,
         priceNote: r.price_note || '',
-        stocks,
+        stocks
       };
     });
-
     res.json(result);
   } catch (err) {
     console.error('GET /api/product-state error', err);
@@ -300,7 +286,7 @@ app.get('/api/product-state', (req, res) => {
   }
 });
 
-// 更新單一商品的價格 & 庫存（後台存檔用）
+// ====== API：更新單一商品的價格 & 庫存（後台存檔用） ======
 app.post('/api/product-state/:productId', (req, res) => {
   try {
     const productId = req.params.productId;
@@ -329,7 +315,7 @@ app.post('/api/product-state/:productId', (req, res) => {
       product_id: productId,
       price: p,
       price_note: priceNote || '',
-      stocks_json: stocksJson,
+      stocks_json: stocksJson
     });
 
     res.json({ ok: true });
@@ -340,14 +326,11 @@ app.post('/api/product-state/:productId', (req, res) => {
 });
 
 // ================== 前端路由處理 ==================
-// 只要不是 /api/ 開頭，就回傳 index.html（讓前端單頁應用可以正常運作）
-app.get('*', (req, res, next) => {
-  if (req.originalUrl.startsWith('/api/')) return next();
+// 只要不是 /api/ 開頭，就回傳 index.html（讓前台 & 後台都用同一個 server）
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// ================== 啟動伺服器 ==================
-
+// ====== 啟動伺服器 ======
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
