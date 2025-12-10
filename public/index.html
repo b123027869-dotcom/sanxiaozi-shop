@@ -1019,9 +1019,8 @@
 
 <script>
 // ====== 後端 API 設定（前台用） ======
-  // 如果之後用別台電腦當伺服器，這裡改成那台的 IP，例如：
-  // const API_BASE = 'http://192.168.1.23:3000';
-  const API_BASE = 'http://localhost:3000';
+
+  const API_BASE = 'https://sanxiaozi-shop.onrender.com';
 
   async function apiPost(path, data) {
     const res = await fetch(API_BASE + path, {
