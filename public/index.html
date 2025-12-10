@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>三小隻日常百貨｜療癒生活百貨</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
+      background: #fff9ec; /* 奶油米色底 */
+      color: #4f3b2a;
+      line-height: 1.6;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 249, 236, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #ffe3aa;
+    }
+
+    .nav {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 18px;
+      color: #e59b29;
+    }
+
+    .logo-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #ffe3a7, #fff4ce);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+    }
+
+    .nav-links a {
+      padding: 6px 10px;
+      border-radius: 999px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .nav-links a:hover {
+      background: #fff0c6;
+      transform: translateY(-1px);
+    }
+
+    .nav-action {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f4b73e, #ffd37a);
+      border: none;
+      color: #3f2b14;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(220, 158, 35, 0.35);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(220, 158, 35, 0.45);
+    }
+
+    .btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 6px rgba(220, 158, 35, 0.3);
+    }
+
+    .btn-secondary {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #e0c080;
+      background: #fff9ec;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    /* Hero 區塊 */
+    .hero {
+      margin-top: 16px;
+      border-radius: 24px;
+      background: radial-gradient(circle at top left, #ffe9b8 0, #fff9ec 40%, #fffdf5 100%);
+      padding: 24px 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2.5fr);
+      gap: 16px;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(216, 164, 79, 0.35);
+    }
+
+    .hero-text h1 {
+      font-size: 26px;
+      color: #e59b29;
+      margin-bottom: 8px;
+    }
+
+    .hero-text h2 {
+      font-size: 16px;
+      color: #7b5b30;
+      margin-bottom: 14px;
+    }
+
+    .hero-tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .hero-tag {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px dashed #ffd88a;
+      color: #c58419;
+    }
+
+    .hero-desc {
+      font-size: 14px;
+      color: #6b502c;
+      margin-bottom: 16px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .hero-secondary {
+      font-size: 12px;
+      color: #9a7641;
+    }
+
+    .hero-badge-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 11px;
+      color: #8b6a3b;
+    }
+
+    .hero-badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ffe3aa;
+    }
+
+    .hero-visual {
+      position: relative;
+      padding: 12px;
+    }
+
+    .hero-visual .hero-badge {
+      position: absolute;
+      top: 0;
+      right: 10px;
+    }
+
+    /* 通用標題 & 分類 */
+    .section-title {
+      margin-top: 28px;
+      margin-bottom: 10px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e59b29;
+    }
+
+    .section-title span {
+      font-size: 12px;
+      color: #9a7641;
+    }
+
+    .category-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .category-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #ffdf9b;
+      background: #fffdf5;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+
+    .category-chip.active {
+      background: linear-gradient(135deg, #f4b73e, #ffd37a);
+      border-color: transparent;
+      color: #3f2b14;
+    }
+
+    /* === 蝦皮商品牆：PC 5 欄、手機 2 欄 === */
+    .product-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .product-card {
+      position: relative;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 12px;
+      background: #fffef8;
+      box-shadow: 0 2px 8px rgba(171, 132, 77, 0.18);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(171, 132, 77, 0.25);
+    }
+
+    .product-tag {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(255, 242, 205, 0.95);
+      border: 1px solid #ffd98b;
+      color: #c58419;
+    }
+
+    .product-img {
+      width: 100%;
+      position: relative;
+      padding-top: 100%;          /* 1:1 方形 */
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff7df;
+      margin-bottom: 4px;
+    }
+
+    .product-img img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .product-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4f3b2a;
+      line-height: 1.4;
+      min-height: 32px;
+      max-height: 34px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .product-desc {
+      display: none;
+    }
+
+    .product-bottom {
+      margin-top: 2px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .product-price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .product-price {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e08a1e;
+    }
+
+    .product-like-btn {
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      cursor: pointer;
+      color: #e59b29;
+    }
+
+    .product-like-btn.active {
+      color: #e63946;
+    }
+
+    /* 小款式列（有多款才顯示） */
+    .card-spec-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .card-spec-btn {
+      border-radius: 999px;
+      border: 1px solid #f0d9a4;
+      background: #fffcf3;
+      padding: 2px 6px;
+      font-size: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .card-spec-btn.active {
+      border-color: #f4b73e;
+      background: #fff7df;
+    }
+
+    /* 數量 + 加入購物車（蝦皮排版） */
+    .card-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .qty-control {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      border: 1px solid #f0d9a4;
+      overflow: hidden;
+      background: #fffcf3;
+    }
+
+    .qty-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .qty-input {
+      width: 30px;
+      border: none;
+      text-align: center;
+      font-size: 12px;
+      background: transparent;
+      outline: none;
+    }
+
+    .btn-cart {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: #fff7df;
+      color: #bd7f1f;
+      border: 1px solid #ffd98b;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    /* 區塊卡片共用 */
+    .card {
+      margin-top: 26px;
+      border-radius: 18px;
+      background: #fffef8;
+      padding: 16px 14px;
+      box-shadow: 0 4px 16px rgba(171, 132, 77, 0.25);
+    }
+
+    .card p {
+      font-size: 13px;
+      color: #6b502c;
+      margin-bottom: 6px;
+    }
+
+    .card ul {
+      padding-left: 18px;
+      font-size: 13px;
+      color: #7a5c3a;
+    }
+
+    .card li {
+      margin-bottom: 4px;
+    }
+
+    /* 訂單查詢結果 */
+    .order-result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      background: #fffdf2;
+      border: 1px dashed #f0d9a4;
+      display: none;
+    }
+
+    .order-result.success {
+      border-style: solid;
+      border-color: #8fbc50;
+      background: #f7ffe9;
+      color: #486022;
+    }
+
+    .order-result.error {
+      border-color: #e5a03d;
+      color: #7b4c16;
+    }
+
+    /* 商品詳情（通用模板） */
+    .product-detail {
+      margin-top: 26px;
+      display: none;
+    }
+
+    .pd-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .pd-images {
+      background: #fffdf5;
+      border-radius: 14px;
+      padding: 10px;
+      border: 1px solid #f0d9a4;
+    }
+
+    .pd-main-img {
+      width: 100%;
+      border-radius: 12px;
+      background: #fff7df;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    .pd-main-img img {
+      max-width: 100%;
+      max-height: 360px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .pd-thumbs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pd-thumb-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #f0d9a4;
+      background: #fff7df;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .pd-thumb-btn.active {
+      border-color: #f4b73e;
+    }
+
+    .pd-thumb-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .pd-info-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #4f3b2a;
+      margin-bottom: 4px;
+    }
+
+    .pd-info-sub {
+      font-size: 12px;
+      color: #9a7641;
+      margin-bottom: 8px;
+    }
+
+    .pd-price {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e08a1e;
+      margin-bottom: 8px;
+    }
+
+    .pd-price span {
+      font-size: 12px;
+      font-weight: 400;
+      color: #9a7641;
+      margin-left: 6px;
+    }
+/* 價格主字體：讓金額變大 */
+.pd-price #detailPrice {
+  font-size: inherit;     /* 與 NT$ 一樣大 */
+  font-weight: inherit;
+  color: inherit;
+}
+
+/* 價格副標（保持原本小字） */
+.pd-price #detailPriceNote {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9a7641;
+  margin-left: 6px;
+}
+    .pd-spec-title {
+      font-size: 13px;
+      color: #6b502c;
+      margin-bottom: 4px;
+    }
+
+    .pd-spec-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .pd-spec-btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #f0d9a4;
+      background: #fffcf3;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .pd-spec-btn.active {
+      border-color: #f4b73e;
+      background: #fff7df;
+    }
+
+    .pd-desc-detail {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #f0d9a4;
+      font-size: 13px;
+      color: #6b502c;
+      white-space: pre-line;
+    }
+
+    footer {
+      margin-top: 30px;
+      padding: 16px;
+      font-size: 11px;
+      text-align: center;
+      color: #a17f48;
+    }
+
+    footer a {
+      color: #e59b29;
+    }
+
+    @media (max-width: 768px) {
+      .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-visual {
+        order: -1;
+      }
+
+      .pd-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="nav">
+    <div class="logo">
+      <div class="logo-badge">☀</div>
+      三小隻日常小物百貨
+    </div>
+
+    <nav class="nav-links">
+      <a href="#products">商品</a>
+      <a href="#checkout">結帳</a>
+      <a href="#order-query">訂單查詢</a>
+      <a href="#about">品牌故事</a>
+    </nav>
+
+    <div class="nav-action">
+      <button class="btn-primary" onclick="scrollToSection('cart')">查看購物車（0）</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Hero 區塊 -->
+  <section class="hero">
+    <div class="hero-text">
+      <h1>把每天過成暖暖奶油色 ♡</h1>
+      <h2>杯子、抱枕、小托盤、桌上小物，用溫柔奶油黃把日常包起來。</h2>
+
+      <div class="hero-tag-row">
+        <div class="hero-tag">滿 NT$699 超商免運</div>
+        <div class="hero-tag">無需註冊會員，一次填寫就能下單</div>
+        <div class="hero-tag">留下 Email / Line，出貨主動通知你</div>
+      </div>
+
+      <p class="hero-desc">
+        我們是沒有壓力的「小型療癒選物店」。  
+        不強迫你加入會員、不塞一堆規則。  
+        只希望你偶爾想讓生活柔軟一點時，會想到這裡。
+      </p>
+
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="scrollToSection('products')">逛逛今天上新品</button>
+        <span class="hero-secondary">先挑喜歡的小物，等一下一起到結帳區填資料即可。</span>
+      </div>
+
+      <div class="hero-badge-row">
+        <div class="hero-badge">🧈 奶油黃主題</div>
+        <div class="hero-badge">☕ 下班也需要被療癒</div>
+        <div class="hero-badge">📮 Email / Line 出貨提醒</div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hero-badge">本週主打：奶油桌面下午茶組 ✨</div>
+    </div>
+  </section>
+
+  <!-- 分類 -->
+  <section>
+    <h3 class="section-title">
+      商品分類
+      <span>選一個你想被療癒的角落開始逛</span>
+    </h3>
+
+    <div class="category-row">
+      <button class="category-chip active" data-category="all">全部</button>
+      <button class="category-chip" data-category="cup">杯盤餐具</button>
+      <button class="category-chip" data-category="room">房間佈置</button>
+      <button class="category-chip" data-category="desk">桌上小物</button>
+      <button class="category-chip" data-category="gift">送禮小物</button>
+    </div>
+  </section>
+
+  <!-- 商品列表（由 JS 自動產生） -->
+  <section id="products">
+    <h3 class="section-title">
+      精選商品
+      <span>商品列表與詳情都從同一份資料產生</span>
+    </h3>
+
+    <div class="product-grid" id="productGrid"></div>
+  </section>
+
+  <!-- 通用商品詳情區（點任何商品都用這一塊） -->
+  <section class="card product-detail" id="productDetail">
+    <h3 class="section-title">
+      <span id="detailTitlePrefix">商品詳情｜</span><span id="detailTitleMain"></span>
+      <span id="detailSubtitle"> </span>
+    </h3>
+
+    <div class="pd-layout">
+      <!-- 左：圖片 -->
+      <div class="pd-images">
+        <div class="pd-main-img">
+          <img id="detailMainImg" src="" alt="">
+        </div>
+        <div class="pd-thumbs" id="detailThumbs"></div>
+      </div>
+
+      <!-- 右：資訊 -->
+      <div>
+        <div class="pd-info-title" id="detailName"></div>
+        <div class="pd-info-sub" id="detailSub"></div>
+
+        <div class="pd-price">
+          NT$ <span id="detailPrice">0</span>
+          <span id="detailPriceNote"></span>
+        </div>
+
+        <div>
+          <div class="pd-spec-title">選擇款式</div>
+          <div class="pd-spec-options" id="detailSpecs"></div>
+        </div>
+
+        <!-- 數量 + 加入購物車（詳情版，同樣合併到購物車） -->
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+          <div class="qty-control" id="detailQtyControl">
+            <button type="button" class="qty-btn" id="detailQtyMinus">−</button>
+            <input type="text" class="qty-input" id="detailQtyInput" value="1">
+            <button type="button" class="qty-btn" id="detailQtyPlus">＋</button>
+          </div>
+
+          <button type="button" class="btn-primary" id="detailAddBtn">
+            🛒 加入購物車
+          </button>
+
+          <button type="button" class="btn-secondary" onclick="backToProducts()">
+            ← 回到商品列表
+          </button>
+        </div>
+
+        <div class="pd-desc-detail" id="detailDesc"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 購物車頁面 -->
+  <section class="card" id="cart">
+    <h3 class="section-title">
+      購物車
+      <span>查看你剛剛加入的小物</span>
+    </h3>
+
+    <div id="cartList" style="font-size:13px; color:#6b502c;">
+      （你的購物車目前是空的）  
+    </div>
+
+    <div class="form-actions" style="margin-top:14px;">
+      <button type="button" class="btn-primary" onclick="scrollToSection('checkout')">
+        前往結帳
+      </button>
+      <button type="button" class="btn-secondary" onclick="backToProducts()">
+        繼續逛逛
+      </button>
+    </div>
+  </section>
+
+  <!-- 結帳區 -->
+  <section class="card" id="checkout">
+    <h3 class="section-title">
+      結帳資訊（無需註冊會員）
+      <span>一次填寫，之後透過 Email / Line 通知你出貨</span>
+    </h3>
+
+    <p>
+      我們不做複雜的會員系統，只需要你在這裡填寫一次，  
+      就可以完成訂單。<br>
+      <strong>Email / Line ID 會用來：</strong>
+    </p>
+    <ul>
+      <li>通知你「訂單成立 / 出貨 / 到店提醒」</li>
+      <li>偶爾分享新品或折扣（可以請我們停止通知）</li>
+    </ul>
+
+    <form id="checkoutForm">
+      <div class="form-row">
+        <div>
+          <label for="checkoutName">收件人姓名（必填）</label>
+          <input type="text" id="checkoutName" required>
+        </div>
+        <div>
+          <label for="checkoutPhone">手機號碼（必填）</label>
+          <input type="tel" id="checkoutPhone" required placeholder="例：09xxxxxxxx">
+          <div class="form-hint">之後查訂單會用到這支電話。</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label for="checkoutEmail">Email（必填）</label>
+          <input type="email" id="checkoutEmail" required placeholder="例：you@example.com">
+          <div class="form-hint">會寄送訂單明細與出貨通知。</div>
+        </div>
+        <div>
+          <label for="checkoutLine">Line ID（選填）</label>
+          <input type="text" id="checkoutLine" placeholder="若填寫，將優先用 Line 通知">
+        </div>
+      </div>
+
+      <div>
+        <label for="checkoutAddress">收件地址（若選宅配）</label>
+        <input type="text" id="checkoutAddress" placeholder="超商取貨可填：超商 + 門市名稱">
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label for="checkoutShip">配送方式</label>
+          <select id="checkoutShip">
+            <option value="711">超商取貨（7-11）</option>
+            <option value="family">超商取貨（全家）</option>
+            <option value="home">宅配到府</option>
+          </select>
+        </div>
+        <div>
+          <label for="checkoutPay">付款方式</label>
+          <select id="checkoutPay">
+            <option value="cod">貨到付款（超商／宅配）</option>
+            <option value="transfer">銀行轉帳</option>
+            <option value="card">信用卡（待開通）</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="checkoutNote">備註（選填）</label>
+        <textarea id="checkoutNote" placeholder="例如：希望盡量幫我在 18:00 前送達，或是其他小提醒。"></textarea>
+      </div>
+
+      <div class="form-note">
+        ※ 目前為示意版：按下送出後，不會真的產生訂單到你的後台，  
+        之後我們可以再把這裡接上資料庫與真正的訂單系統。
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">送出訂單（示意）</button>
+        <button type="button" class="btn-secondary" onclick="backToProducts()">
+          還想再多逛一下
+        </button>
+      </div>
+    </form>
+  </section>
+  <!-- 後台管理（假後端示意） -->
+  <section class="card" id="admin">
+    <h3 class="section-title">
+      後台管理（示意）
+      <span>只存在這台瀏覽器的 localStorage</span>
+    </h3>
+
+    <!-- 簡單登入 -->
+    <div id="adminLoginBox" style="font-size:13px; color:#6b502c;">
+      <p>這裡是示意用的假後台，密碼預設為：<code>demo123</code></p>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <input type="password" id="adminPassword"
+               placeholder="請輸入後台密碼"
+               style="padding:6px 8px; border-radius:8px; border:1px solid #e0c080; font-size:13px;">
+        <button type="button" class="btn-primary" id="adminLoginBtn">登入後台</button>
+        <span id="adminLoginMsg" style="font-size:12px; color:#b5532e;"></span>
+      </div>
+    </div>
+
+    <!-- 真正的後台內容 -->
+    <div id="adminPanel" style="display:none; margin-top:14px; font-size:13px; color:#6b502c;">
+
+      <!-- 商品管理 -->
+      <h4 style="font-size:14px; margin-bottom:6px; color:#e59b29;">商品管理：調整價格 / 庫存</h4>
+      <div id="adminProducts" style="border:1px dashed #f0d9a4; border-radius:10px; padding:10px; background:#fffdf5;">
+        （載入中…）
+      </div>
+
+      <!-- 訂單管理 + 統計 -->
+      <h4 style="font-size:14px; margin:16px 0 6px; color:#e59b29;">訂單管理與每月統計</h4>
+
+      <div style="border:1px dashed #f0d9a4; border-radius:10px; padding:10px; background:#fffdf5; margin-bottom:12px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <label>
+            統計月份：
+            <input type="month" id="adminMonth"
+                   style="padding:4px 6px; border-radius:8px; border:1px solid #e0c080; font-size:13px;">
+          </label>
+          <button type="button" class="btn-secondary" id="adminRefreshStats">
+            重新計算
+          </button>
+        </div>
+        <div id="adminStats" style="margin-top:8px; font-size:13px;"></div>
+      </div>
+
+      <div id="adminOrders"
+           style="border:1px dashed #f0d9a4; border-radius:10px; padding:10px; background:#fffdf5; max-height:360px; overflow:auto;">
+        （目前沒有訂單）
+      </div>
+    </div>
+  </section>
+
+  <!-- 訂單查詢 -->
+  <section class="card" id="order-query">
+    <h3 class="section-title">
+      訂單查詢
+      <span>輸入電話與訂單編號，自行查看訂單狀態</span>
+    </h3>
+
+    <p>
+      之後真正上線時，顧客可以在這裡用：  
+      <strong>手機號碼 + 訂單編號</strong> 查詢自己的訂單，不需要登入會員。
+    </p>
+
+    <form id="orderQueryForm">
+      <div class="form-row">
+        <div>
+          <label for="queryPhone">手機號碼</label>
+          <input type="tel" id="queryPhone" required placeholder="例：09xxxxxxxx">
+        </div>
+        <div>
+          <label for="queryOrderId">訂單編號</label>
+          <input type="text" id="queryOrderId" required placeholder="例：ND20250001">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">查詢訂單</button>
+        <div class="form-hint">
+          示意資料：電話可輸入 <strong>0912345678</strong>，訂單編號 <strong>ND20250001</strong> 看看效果。
+        </div>
+      </div>
+    </form>
+
+    <div class="order-result" id="orderResult"></div>
+  </section>
+
+  <!-- 品牌故事 -->
+  <section class="card" id="about">
+    <h3 class="section-title">
+      品牌小故事
+      <span>從「想把房間變奶油黃一點」開始</span>
+    </h3>
+    <p>
+      三小隻日常小物百貨，是從一間小房間開始的選物店。  
+      有一天發現，房間裡只要多一兩個顏色柔柔的東西，  
+      心情就會不知不覺比較穩定。
+    </p>
+    <p>
+      所以我們只做一件事：<strong>幫你挑那些「看了會覺得人生好像沒有那麼辛苦」的小物。</strong>
+    </p>
+    <ul>
+      <li>實際使用、拍照，不只看廠商圖。</li>
+      <li>顏色以奶油黃、奶茶色、木頭色為主，不刺激眼睛。</li>
+      <li>價錢控制在「自己也買得下手」的範圍。</li>
+    </ul>
+    <p>
+      希望你打開包裹的那一刻，會覺得：  
+      啊，今天又多了一點點喜歡生活的理由。🧈
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  三小隻日常百貨｜療癒生活百貨 · 無會員制電商網站示意版型<br>
+  之後可以在這裡放上你的 IG、蝦皮賣場、Line 官方帳號連結。
+</footer>
+
+<script>
+// ====== 後端 API 設定（前台用） ======
+  // 如果之後用別台電腦當伺服器，這裡改成那台的 IP，例如：
+  // const API_BASE = 'http://192.168.1.23:3000';
+  const API_BASE = 'http://localhost:3000';
+
+  async function apiPost(path, data) {
+    const res = await fetch(API_BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error('API 錯誤：' + res.status + ' ' + text);
+    }
+    return res.json();
+  }
+
+  // ====== 捲動到指定區塊 ======
+  function scrollToSection(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  // ====== 商品資料表（之後要新增商品只要在這裡加一筆） ======
+  // 每個 product:
+  // id: 唯一 ID
+  // categories: 用來做分類篩選
+  // specs: 款式（可以無限增加），每個 spec 裡 thumbs 可以放多張小圖
+   const products = [
+    // 商品 1：Chiikawa A6 活頁記事本
+    {
+      id: 'chiikawa',
+      name: 'Chiikawa 吉伊卡哇 A6 活頁記事本',
+      subtitle: '三小隻日常百貨 · Chiikawa 手帳系列',
+      price: 259,
+      priceNote: '學生高顏值記事本 · 每天都想打開寫字',
+      tag: '本週熱銷',
+      categories: ['desk', 'gift'],
+      shortDesc: '三角色可選 · A6 隨身尺寸 · 磁吸 PU 封面 · 學生手帳人氣款。',
+      specs: [
+        {
+          key: 'usagi',
+          label: '烏薩奇（黃）',
+          mainImg: 'images/test.gif',
+          thumbs: [
+            'images/烏薩奇小圖1.jpg',
+            'images/烏薩奇小圖2.jpg',
+            'images/烏薩奇小圖3.jpg',
+            'images/烏薩奇小圖4.jpg'
+          ]
+        },
+        {
+          key: 'kuri',
+          label: '小八（藍）',
+          mainImg: 'images/小八記事本大圖1.jpg',
+          thumbs: [
+            'images/小八記事本小圖1.jpg',
+            'images/小八記事本小圖2.jpg',
+            'images/小八記事本小圖3.jpg',
+            'images/小八記事本小圖4.jpg'
+          ]
+        },
+        {
+          key: 'chii',
+          label: '吉伊（粉）',
+          mainImg: 'images/吉依記事本大圖1.jpg',
+          thumbs: [
+            'images/吉依記事本小圖1.jpg',
+            'images/吉依記事本小圖2.jpg',
+            'images/吉依記事本小圖3.jpg',
+            'images/吉依記事本小圖4.jpg'
+          ]
+        }
+      ],
+      detailHtml: `
+        <p>
+          A6 隨身尺寸的 Chiikawa 吉伊卡哇活頁記事本，封面使用磁吸 PU 皮，摸起來有一點軟軟的高級感。<br>
+          內頁是活頁設計，可以依照科目、主題自由增減頁數。
+        </p>
+
+        <ul>
+          <li>三款封面角色：烏薩奇、小八、吉伊，怎麼選都可愛</li>
+          <li>A6 大小，放書包、側背包都不佔空間</li>
+          <li>活頁夾設計，寫滿可以自己補內頁，環保又省錢</li>
+          <li>適合學生課堂筆記、手帳、心情日記、小小 To-do List</li>
+        </ul>
+
+        <p style="margin-top:8px;">
+          很適合當：開學禮、生日禮物、交換禮物，收到的人打開一定會「啊～好可愛」。🧸
+        </p>
+      `
+    },
+
+    // 商品 2：520ml 316 不鏽鋼保溫杯
+    {
+      id: 'product-thermo',
+      name: '520ml 316不鏽鋼保溫杯',
+      subtitle: '520ml 大容量 · SUS316 不鏽鋼內膽',
+      price: 250,
+      priceNote: '520ml 大容量 · 附提繩 · 保溫鎖冷',
+      tag: '新上架',
+      categories: ['cup', 'gift'], // 會出現在「杯盤餐具」+「送禮小物」
+      shortDesc: '520ml 大容量・附便攜提繩・保溫鎖冷・SUS316 不鏽鋼內膽',
+      detailHtml: `
+        <p>
+          520ml 大容量，日常喝水、咖啡、手搖飲都裝得下。<br>
+          附便攜提繩，通勤、上課、出遊拿著很方便。<br>
+          SUS316 不鏽鋼內膽，保溫鎖冷，一年四季都能用。
+        </p>
+
+        <ul>
+          <li>520ml 大容量</li>
+          <li>附便攜提繩</li>
+          <li>保溫鎖冷</li>
+          <li>SUS316 不鏽鋼內膽</li>
+        </ul>
+
+        <p style="margin-top:8px;">
+          ⚠ 下單前可先加官方 Line 詢問實物圖，確認款式沒問題再出貨。<br>
+          ⚠ 下單請看仔細，款式很多，請先選好再結帳。
+        </p>
+      `,
+      specs: [
+        {
+          key: '537-01',
+          label: '537保溫杯-01',
+          mainImg: 'images/537保溫杯-01.jpg',
+          thumbs: ['images/537保溫杯-01.jpg']
+        },
+        {
+          key: '537-02',
+          label: '537保溫杯-02',
+          mainImg: 'images/537保溫杯-02.jpg',
+          thumbs: ['images/537保溫杯-02.jpg']
+        },
+        {
+          key: '537-03',
+          label: '537保溫杯-03',
+          mainImg: 'images/537保溫杯-03.jpg',
+          thumbs: ['images/537保溫杯-03.jpg']
+        },
+        {
+          key: '537-04',
+          label: '537保溫杯-04',
+          mainImg: 'images/537保溫杯-04.jpg',
+          thumbs: ['images/537保溫杯-04.jpg']
+        },
+        {
+          key: '537-05',
+          label: '537保溫杯-05',
+          mainImg: 'images/537保溫杯-05.jpg',
+          thumbs: ['images/537保溫杯-05.jpg']
+        },
+        {
+          key: '537-06',
+          label: '537保溫杯-06',
+          mainImg: 'images/537保溫杯-06.jpg',
+          thumbs: ['images/537保溫杯-06.jpg']
+        },
+        {
+          key: '537-07',
+          label: '537保溫杯-07',
+          mainImg: 'images/537保溫杯-07.jpg',
+          thumbs: ['images/537保溫杯-07.jpg']
+        },
+        {
+          key: '537-08',
+          label: '537保溫杯-08',
+          mainImg: 'images/537保溫杯-08.jpg',
+          thumbs: ['images/537保溫杯-08.jpg']
+        },
+        {
+          key: 'chi-01',
+          label: 'chiikawa保溫杯-01',
+          mainImg: 'images/chiikawa保溫杯-01.jpg',
+          thumbs: ['images/chiikawa保溫杯-01.jpg']
+        },
+        {
+          key: 'chi-02',
+          label: 'chiikawa保溫杯-02',
+          mainImg: 'images/chiikawa保溫杯-02.jpg',
+          thumbs: ['images/chiikawa保溫杯-02.jpg']
+        },
+        {
+          key: 'chi-03',
+          label: 'chiikawa保溫杯-03',
+          mainImg: 'images/chiikawa保溫杯-03.jpg',
+          thumbs: ['images/chiikawa保溫杯-03.jpg']
+        },
+        {
+          key: 'chi-04',
+          label: 'chiikawa保溫杯-04',
+          mainImg: 'images/chiikawa保溫杯-04.jpg',
+          thumbs: ['images/chiikawa保溫杯-04.jpg']
+        },
+        {
+          key: 'ge-01',
+          label: 'ge保溫杯-01',
+          mainImg: 'images/ge保溫杯-01.jpg',
+          thumbs: ['images/ge保溫杯-01.jpg']
+        },
+        {
+          key: 'ko-08-01',
+          label: '小八保溫杯-01',
+          mainImg: 'images/小八保溫杯-01.jpg',
+          thumbs: ['images/小八保溫杯-01.jpg']
+        },
+        {
+          key: 'ko-08-02',
+          label: '小八保溫杯-02',
+          mainImg: 'images/小八保溫杯-02.jpg',
+          thumbs: ['images/小八保溫杯-02.jpg']
+        }
+      ]
+    },
+
+    // 商品 3：500ml 新款 Chiikawa 316 不鏽鋼保溫杯
+    {
+      id: 'cup-new-chiikawa',
+      name: '500ml 新款 Chiikawa 316不鏽鋼保溫杯',
+      subtitle: '高顏值 · 500ml 大容量 · SUS316 不鏽鋼',
+      price: 350,
+      priceNote: '500ml 大容量 · 附提繩 · 保溫鎖冷',
+      tag: '新款上市',
+      categories: ['cup', 'gift'],
+      shortDesc: '高顏值 500ml 大容量・附便攜提繩・保溫鎖冷・SUS316 不鏽鋼內膽',
+      specs: [
+        {
+          key: 'n-01',
+          label: '新款chiikawa保溫杯-01',
+          mainImg: 'images/新款chiikawa保溫杯-01.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-01.jpg']
+        },
+        {
+          key: 'n-02',
+          label: '新款chiikawa保溫杯-02',
+          mainImg: 'images/新款chiikawa保溫杯-02.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-02.jpg']
+        },
+        {
+          key: 'n-03',
+          label: '新款chiikawa保溫杯-03',
+          mainImg: 'images/新款chiikawa保溫杯-03.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-03.jpg']
+        },
+        {
+          key: 'n-04',
+          label: '新款chiikawa保溫杯-04',
+          mainImg: 'images/新款chiikawa保溫杯-04.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-04.jpg']
+        },
+        {
+          key: 'n-05',
+          label: '新款chiikawa保溫杯-05',
+          mainImg: 'images/新款chiikawa保溫杯-05.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-05.jpg']
+        },
+        {
+          key: 'n-06',
+          label: '新款chiikawa保溫杯-06',
+          mainImg: 'images/新款chiikawa保溫杯-06.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-06.jpg']
+        },
+        {
+          key: 'n-07',
+          label: '新款chiikawa保溫杯-07',
+          mainImg: 'images/新款chiikawa保溫杯-07.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-07.jpg']
+        },
+        {
+          key: 'n-08',
+          label: '新款chiikawa保溫杯-08',
+          mainImg: 'images/新款chiikawa保溫杯-08.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-08.jpg']
+        },
+        {
+          key: 'n-09',
+          label: '新款chiikawa保溫杯-09',
+          mainImg: 'images/新款chiikawa保溫杯-09.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-09.jpg']
+        },
+        {
+          key: 'n-10',
+          label: '新款chiikawa保溫杯-10',
+          mainImg: 'images/新款chiikawa保溫杯-10.jpg',
+          thumbs: ['images/新款chiikawa保溫杯-10.jpg']
+        }
+      ],
+      detailHtml: `
+        <p>
+          高顏值 500ml 大容量新款 Chiikawa 保溫杯，附便攜提繩，<br>
+          可保溫也可鎖冷，日常通勤、上課、健身都很好帶。
+        </p>
+
+        <ul>
+          <li>高顏值插畫杯身，多款圖案可選</li>
+          <li>500ml 大容量</li>
+          <li>SUS316 不鏽鋼內膽</li>
+          <li>保溫、鎖冷兩用</li>
+          <li>附同色系便攜提繩</li>
+          <li>通勤 / 上課 / 送禮 / 自用都很讚</li>
+        </ul>
+
+        <p style="margin-top:8px;">
+          可先至官方 Line 詢問實物圖，確認款式與顏色都沒問題再下單。<br>
+          下單請務必看清楚款式名稱與備註，個人因素恕無法退換貨。
+        </p>
+      `
+    },
+
+    // 商品 4：Chiikawa 吉伊卡哇帆布袋
+{
+  id: 'chiikawa-bag',
+  name: 'Chiikawa 吉伊卡哇帆布袋',
+  subtitle: '輕便・大容量・外出好伙伴',
+  price: 150,
+  priceNote: '多款圖案可選 · 日常外出超實用',
+  tag: '熱銷補貨',
+  categories: ['gift', 'room'],
+
+  shortDesc: '輕便、耐用、可愛度爆表，20 款圖案任你挑選！',
+
+  detailHtml: `
+【Chiikawa 吉伊卡哇帆布袋 ♡ 你外出的最佳夥伴】  
+
+可愛度爆表的帆布袋來啦！  
+日常買飲料、上課、上班、小旅行都超方便～  
+
+✔ 大容量好裝、耐用不易壞  
+✔ 手提 / 肩背都好看  
+✔ Chiikawa 粉絲必收的可愛單品  
+✔ 20 款圖案任你挑  
+
+有任何問題歡迎聊聊私訊詢問😆  
+也可拍實物圖給你確認，沒問題後再寄出～☺️
+  `,
+
+  // 20 款式
+  specs: [
+    { key: 'b1', label: '款式 1',  mainImg: 'images2-帆布袋/1.jpg',  thumbs: ['images2-帆布袋/1.jpg'] },
+    { key: 'b2', label: '款式 2',  mainImg: 'images2-帆布袋/2.jpg',  thumbs: ['images2-帆布袋/2.jpg'] },
+    { key: 'b3', label: '款式 3',  mainImg: 'images2-帆布袋/3.jpg',  thumbs: ['images2-帆布袋/3.jpg'] },
+    { key: 'b4', label: '款式 4',  mainImg: 'images2-帆布袋/4.jpg',  thumbs: ['images2-帆布袋/4.jpg'] },
+    { key: 'b5', label: '款式 5',  mainImg: 'images2-帆布袋/5.jpg',  thumbs: ['images2-帆布袋/5.jpg'] },
+    { key: 'b6', label: '款式 6',  mainImg: 'images2-帆布袋/6.jpg',  thumbs: ['images2-帆布袋/6.jpg'] },
+    { key: 'b7', label: '款式 7',  mainImg: 'images2-帆布袋/7.jpg',  thumbs: ['images2-帆布袋/7.jpg'] },
+    { key: 'b8', label: '款式 8',  mainImg: 'images2-帆布袋/8.jpg',  thumbs: ['images2-帆布袋/8.jpg'] },
+    { key: 'b9', label: '款式 9',  mainImg: 'images2-帆布袋/9.jpg',  thumbs: ['images2-帆布袋/9.jpg'] },
+    { key: 'b10', label: '款式 10', mainImg: 'images2-帆布袋/10.jpg', thumbs: ['images2-帆布袋/10.jpg'] },
+    { key: 'b11', label: '款式 11', mainImg: 'images2-帆布袋/11.jpg', thumbs: ['images2-帆布袋/11.jpg'] },
+    { key: 'b12', label: '款式 12', mainImg: 'images2-帆布袋/12.jpg', thumbs: ['images2-帆布袋/12.jpg'] },
+    { key: 'b13', label: '款式 13', mainImg: 'images2-帆布袋/13.jpg', thumbs: ['images2-帆布袋/13.jpg'] },
+    { key: 'b14', label: '款式 14', mainImg: 'images2-帆布袋/14.jpg', thumbs: ['images2-帆布袋/14.jpg'] },
+    { key: 'b15', label: '款式 15', mainImg: 'images2-帆布袋/15.jpg', thumbs: ['images2-帆布袋/15.jpg'] },
+    { key: 'b16', label: '款式 16', mainImg: 'images2-帆布袋/16.jpg', thumbs: ['images2-帆布袋/16.jpg'] },
+    { key: 'b17', label: '款式 17', mainImg: 'images2-帆布袋/17.jpg', thumbs: ['images2-帆布袋/17.jpg'] },
+    { key: 'b18', label: '款式 18', mainImg: 'images2-帆布袋/18.jpg', thumbs: ['images2-帆布袋/18.jpg'] },
+    { key: 'b19', label: '款式 19', mainImg: 'images2-帆布袋/19.jpg', thumbs: ['images2-帆布袋/19.jpg'] },
+    { key: 'b20', label: '款式 20', mainImg: 'images2-帆布袋/20.jpg', thumbs: ['images2-帆布袋/20.jpg'] },
+  ]
+},
+
+  ];
+  // ====== 假後端：localStorage Key 定義 ======
+  const STORAGE_KEYS = {
+    products: 'shop_products_state_v1', // 商品價格/庫存
+    orders: 'shop_orders_v1'            // 訂單資料
+  };
+
+  // 從 localStorage 載入商品設定（價格 / 庫存）
+  // 從 localStorage 載入商品設定（價格 / 每款庫存）
+  function loadProductsState() {
+    const raw = localStorage.getItem(STORAGE_KEYS.products);
+    if (!raw) return;
+    try {
+      // 結構：{ [productId]: { price, priceNote?, stocks?: { [specKey]: number|null } } }
+      const saved = JSON.parse(raw);
+
+      products.forEach(p => {
+        const m = saved[p.id];
+        if (!m) return;
+
+        // 商品整體價格 / 說明
+        if (typeof m.price === 'number') p.price = m.price;
+        if (typeof m.priceNote === 'string') p.priceNote = m.priceNote;
+
+        // 每個款式的庫存
+        if (m.stocks && Array.isArray(p.specs)) {
+          p.specs.forEach(spec => {
+            const sVal = m.stocks[spec.key];
+            if (typeof sVal === 'number') {
+              spec.stock = sVal;        // 這個款式的庫存
+            } else {
+              // 沒設定就當作不限量（undefined）
+              // spec.stock = undefined;
+            }
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('loadProductsState error', e);
+    }
+  }
+
+  // 把目前 products 的「價格」+「各款式庫存」存回 localStorage
+  function saveProductsStateFromProducts() {
+    const data = {};
+    products.forEach(p => {
+      const productData = {
+        price: p.price,
+        priceNote: p.priceNote || '',
+        stocks: {}
+      };
+
+      if (Array.isArray(p.specs)) {
+        p.specs.forEach(spec => {
+          if (typeof spec.stock === 'number') {
+            productData.stocks[spec.key] = spec.stock; // 存這個款式的庫存
+          }
+        });
+      }
+
+      data[p.id] = productData;
+    });
+
+    localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(data));
+  }
+
+
+  // 取得全部訂單（陣列）
+  function getAllOrders() {
+    const raw = localStorage.getItem(STORAGE_KEYS.orders);
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      console.warn('getAllOrders error', e);
+      return [];
+    }
+  }
+
+  // 儲存全部訂單（陣列）
+  function saveAllOrders(orders) {
+    localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
+  }
+
+  // 產生訂單編號：ND + YYYYMMDD + 四碼流水號
+  function generateOrderId(allOrders) {
+    const now = new Date();
+    const y = now.getFullYear().toString();
+    const m = (now.getMonth() + 1).toString().padStart(2, '0');
+    const d = now.getDate().toString().padStart(2, '0');
+    const datePrefix = `${y}${m}${d}`;
+
+    const todayOrders = allOrders.filter(o => (o.id || '').startsWith('ND' + datePrefix));
+    const nextIndex = todayOrders.length + 1;
+    const indexStr = nextIndex.toString().padStart(4, '0');
+    return `ND${datePrefix}${indexStr}`;
+  }
+
+  // 統計某個月份資料
+  function calcMonthlyStats(orders, year, month) {
+    // month: 1-12
+    const result = {
+      year,
+      month,
+      orderCount: 0,
+      completedCount: 0,
+      totalAmount: 0,
+      products: {} // { productId: { name, qty, amount } }
+    };
+
+    orders.forEach(o => {
+      const t = new Date(o.createdAt);
+      const oy = t.getFullYear();
+      const om = t.getMonth() + 1;
+      if (oy !== year || om !== month) return;
+
+      result.orderCount += 1;
+      if (o.status === 'completed') result.completedCount += 1;
+      result.totalAmount += o.totalAmount || 0;
+
+      (o.items || []).forEach(item => {
+        const pid = item.productId;
+        if (!result.products[pid]) {
+          result.products[pid] = {
+            name: item.name,
+            qty: 0,
+            amount: 0
+          };
+        }
+        result.products[pid].qty += item.qty;
+        result.products[pid].amount += (item.price || 0) * item.qty;
+      });
+    });
+
+    return result;
+  }
+
+
+  // ====== 商品分類篩選 ======
+  const categoryChips = document.querySelectorAll('.category-chip');
+  const productGrid = document.getElementById('productGrid');
+
+  categoryChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      categoryChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      const category = chip.dataset.category;
+      renderProductGrid(category);
+    });
+  });
+
+// ====== 購物車資料結構 ======
+let cartItems = []; // {productId, specKey, qty, price, name, specLabel}
+let cartCount = 0;
+const cartBtnTop = document.querySelector('.nav-action .btn-primary');
+
+function updateCartBtnText() {
+  if (cartBtnTop) {
+    cartBtnTop.textContent = `查看購物車（${cartCount}）`;
+  }
+}
+
+function addToCart(productId, specKey, qty) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+
+  const specList = product.specs || [];
+  let useSpec = specList[0];
+
+  if (specKey) {
+    const found = specList.find(s => s.key === specKey);
+    if (found) useSpec = found;
+  }
+
+  if (!useSpec) {
+    useSpec = { key: 'default', label: '預設款' };
+  }
+
+  qty = Number(qty) || 1;
+  if (qty < 1) qty = 1;
+
+  // === 每個款式各自的庫存檢查 ===
+  if (typeof useSpec.stock === 'number') {
+    const currentInCartSpec = cartItems
+      .filter(it => it.productId === productId && it.specKey === useSpec.key)
+      .reduce((sum, it) => sum + it.qty, 0);
+
+    if (currentInCartSpec + qty > useSpec.stock) {
+      const remain = useSpec.stock - currentInCartSpec;
+      alert(
+        `「${product.name} - ${useSpec.label}」庫存不足，` +
+        `目前最多還能加 ${remain < 0 ? 0 : remain} 件。`
+      );
+      return;
+    }
+  }
+
+  // 同商品 + 同款式自動合併
+  const exist = cartItems.find(
+    item => item.productId === productId && item.specKey === useSpec.key
+  );
+  if (exist) {
+    exist.qty += qty;
+  } else {
+    cartItems.push({
+      productId,
+      specKey: useSpec.key,
+      name: product.name,
+      specLabel: useSpec.label,
+      price: product.price,
+      qty
+    });
+  }
+
+  cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
+  updateCartBtnText();
+  renderCart();
+}
+
+function removeCartItem(index) {
+  if (index < 0 || index >= cartItems.length) return;
+  cartItems.splice(index, 1);
+  cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
+  updateCartBtnText();
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById('cartList');
+  if (!container) return;
+
+  if (cartItems.length === 0) {
+    container.innerHTML = '（你的購物車目前是空的）';
+    return;
+  }
+
+  let html = '<ul style="padding-left:18px;">';
+  let total = 0;
+  cartItems.forEach((item, index) => {
+    const lineTotal = item.price * item.qty;
+    total += lineTotal;
+    html += `
+      <li style="margin-bottom:4px;">
+        ${item.name}（${item.specLabel}） × ${item.qty}
+        － NT$${lineTotal}
+        <button type="button"
+          onclick="removeCartItem(${index})"
+          style="margin-left:6px;padding:2px 6px;font-size:11px;border-radius:6px;border:1px solid #e0c080;background:#fff9ec;cursor:pointer;">
+          移除
+        </button>
+      </li>
+    `;
+  });
+  html += '</ul>';
+  html += `<div style="margin-top:8px;font-size:13px;color:#4f3b2a;">
+            小計：<strong>NT$ ${total}</strong>
+          </div>`;
+  container.innerHTML = html;
+}
+
+// 計算購物車總金額（給結帳用）
+function calcCartTotal() {
+  return cartItems.reduce((sum, it) => {
+    const price = typeof it.price === 'number' ? it.price : 0;
+    return sum + price * it.qty;
+  }, 0);
+}
+
+window.removeCartItem = removeCartItem;
+
+
+  // ====== 產生商品列表 ======
+  function renderProductGrid(category = 'all') {
+    if (!productGrid) return;
+    productGrid.innerHTML = '';
+
+    products.forEach(product => {
+      const cats = product.categories || [];
+      if (category !== 'all' && !cats.includes(category)) return;
+
+      const firstSpec = (product.specs && product.specs[0]) || null;
+
+      const article = document.createElement('article');
+      article.className = 'product-card';
+      article.dataset.id = product.id;
+      article.dataset.category = cats.join(' ');
+      article.dataset.selectedSpec = firstSpec ? firstSpec.key : '';
+
+      // 主要結構
+      article.innerHTML = `
+        ${product.tag ? `<div class="product-tag">${product.tag}</div>` : ''}
+        <div class="product-img" data-click="open-detail">
+          ${firstSpec && firstSpec.mainImg
+            ? `<img src="${firstSpec.mainImg}" alt="${product.name}">`
+            : ''}
+        </div>
+        <h4 class="product-name" data-click="open-detail">${product.name}</h4>
+        <div class="product-bottom">
+          <div class="product-price-row">
+            <div class="product-price">NT$ ${product.price}</div>
+            <button type="button" class="product-like-btn">♡</button>
+          </div>
+          <div class="card-spec-row">
+            ${(product.specs || [])
+              .map(
+                (spec, idx) =>
+                  `<button type="button"
+                     class="card-spec-btn ${idx === 0 ? 'active' : ''}"
+                     data-spec-key="${spec.key}">
+                     ${spec.label}
+                   </button>`
+              )
+              .join('')}
+          </div>
+          <div class="card-action-row">
+            <div class="qty-control">
+              <button type="button" class="qty-btn">−</button>
+              <input type="text" class="qty-input" value="1">
+              <button type="button" class="qty-btn">＋</button>
+            </div>
+            <button type="button" class="btn-cart">
+              🛒 加入
+            </button>
+          </div>
+        </div>
+      `;
+
+      // 點圖片 / 名稱 打開詳情
+      article.querySelectorAll('[data-click="open-detail"]').forEach(el => {
+        el.addEventListener('click', () => openProduct(product.id));
+      });
+
+      // 讚 / 收藏
+      const likeBtn = article.querySelector('.product-like-btn');
+      likeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        likeBtn.classList.toggle('active');
+        likeBtn.textContent = likeBtn.classList.contains('active') ? '❤' : '♡';
+      });
+
+      // 款式選擇
+      const specBtns = article.querySelectorAll('.card-spec-btn');
+      specBtns.forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          specBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          article.dataset.selectedSpec = btn.dataset.specKey || '';
+        });
+      });
+
+      // 數量控制
+      const qtyInput = article.querySelector('.qty-input');
+      const qtyBtns = article.querySelectorAll('.qty-btn');
+      qtyBtns[0].addEventListener('click', e => {
+        e.stopPropagation();
+        let v = parseInt(qtyInput.value || '1', 10);
+        if (isNaN(v) || v < 1) v = 1;
+        v = Math.max(1, v - 1);
+        qtyInput.value = v;
+      });
+      qtyBtns[1].addEventListener('click', e => {
+        e.stopPropagation();
+        let v = parseInt(qtyInput.value || '1', 10);
+        if (isNaN(v) || v < 1) v = 1;
+        v += 1;
+        qtyInput.value = v;
+      });
+
+      // 加入購物車
+      const addBtn = article.querySelector('.btn-cart');
+      addBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const specKey = article.dataset.selectedSpec || '';
+        const qty = parseInt(qtyInput.value || '1', 10) || 1;
+        addToCart(product.id, specKey, qty);
+      });
+
+      productGrid.appendChild(article);
+    });
+  }
+
+  // ====== 商品詳情 ======
+  const productDetailSection = document.getElementById('productDetail');
+  const detailTitleMain = document.getElementById('detailTitleMain');
+  const detailSubtitle = document.getElementById('detailSubtitle');
+  const detailName = document.getElementById('detailName');
+  const detailSub = document.getElementById('detailSub');
+  const detailPrice = document.getElementById('detailPrice');
+  const detailPriceNote = document.getElementById('detailPriceNote');
+  const detailMainImg = document.getElementById('detailMainImg');
+  const detailThumbs = document.getElementById('detailThumbs');
+  const detailSpecs = document.getElementById('detailSpecs');
+  const detailDesc = document.getElementById('detailDesc');
+  const detailQtyInput = document.getElementById('detailQtyInput');
+  const detailQtyMinus = document.getElementById('detailQtyMinus');
+  const detailQtyPlus = document.getElementById('detailQtyPlus');
+  const detailAddBtn = document.getElementById('detailAddBtn');
+
+  let currentDetailProductId = null;
+  let currentDetailSpecKey = null;
+
+  function openProduct(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    currentDetailProductId = productId;
+
+    detailTitleMain.textContent = product.name;
+    detailSubtitle.textContent = product.subtitle ? product.subtitle : '';
+    detailName.textContent = product.name;
+    detailSub.textContent = product.subtitle || '';
+    detailPrice.textContent = product.price;
+    detailPriceNote.textContent = product.priceNote || '';
+    detailDesc.innerHTML = product.detailHtml || '';
+
+
+    // 款式按鈕
+    detailSpecs.innerHTML = '';
+    (product.specs || []).forEach((spec, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pd-spec-btn' + (idx === 0 ? ' active' : '');
+      btn.textContent = spec.label;
+      btn.dataset.specKey = spec.key;
+      btn.addEventListener('click', () => {
+        setDetailSpec(productId, spec.key);
+      });
+      detailSpecs.appendChild(btn);
+    });
+
+    // 初始化顯示第一個款式
+    if (product.specs && product.specs[0]) {
+      setDetailSpec(productId, product.specs[0].key);
+    }
+
+    // 數量初始化
+    detailQtyInput.value = '1';
+
+    // 顯示詳情、隱藏列表
+    productDetailSection.style.display = 'block';
+    scrollToSection('productDetail');
+  }
+
+  function setDetailSpec(productId, specKey) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const spec = product.specs.find(s => s.key === specKey) || product.specs[0];
+    if (!spec) return;
+
+    currentDetailSpecKey = spec.key;
+
+    // 主圖
+    if (spec.mainImg) {
+      detailMainImg.src = spec.mainImg;
+      detailMainImg.alt = `${product.name} ${spec.label}`;
+    }
+
+    // 縮圖
+    detailThumbs.innerHTML = '';
+    (spec.thumbs || [spec.mainImg]).forEach((src, idx) => {
+      if (!src) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pd-thumb-btn' + (idx === 0 ? ' active' : '');
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = `${product.name} ${spec.label} 圖片`;
+      btn.appendChild(img);
+      btn.addEventListener('click', () => {
+        detailMainImg.src = src;
+        detailThumbs
+          .querySelectorAll('.pd-thumb-btn')
+          .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+      detailThumbs.appendChild(btn);
+    });
+
+    // 款式按鈕 active 狀態
+    detailSpecs
+      .querySelectorAll('.pd-spec-btn')
+      .forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.specKey === specKey);
+      });
+  }
+
+  function backToProducts() {
+    productDetailSection.style.display = 'none';
+    scrollToSection('products');
+  }
+
+  window.backToProducts = backToProducts;
+
+  // 詳情 數量控制
+  detailQtyMinus.addEventListener('click', () => {
+    let v = parseInt(detailQtyInput.value || '1', 10);
+    if (isNaN(v) || v < 1) v = 1;
+    v = Math.max(1, v - 1);
+    detailQtyInput.value = v;
+  });
+
+  detailQtyPlus.addEventListener('click', () => {
+    let v = parseInt(detailQtyInput.value || '1', 10);
+    if (isNaN(v) || v < 1) v = 1;
+    v += 1;
+    detailQtyInput.value = v;
+  });
+
+  detailAddBtn.addEventListener('click', () => {
+    if (!currentDetailProductId) return;
+    const qty = parseInt(detailQtyInput.value || '1', 10) || 1;
+    addToCart(currentDetailProductId, currentDetailSpecKey, qty);
+  });
+
+    // ====== 結帳表單（實際寫入 localStorage 的假後端） ======
+  const checkoutForm = document.getElementById('checkoutForm');
+  if (checkoutForm) {
+    checkoutForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // 1. 檢查購物車是否有東西
+      if (cartItems.length === 0) {
+        alert('購物車是空的，請先選幾樣小物再來結帳唷！');
+        return;
+      }
+
+      // 2. 讀取表單資料
+      const name = document.getElementById('checkoutName').value.trim();
+      const phone = document.getElementById('checkoutPhone').value.trim();
+      const email = document.getElementById('checkoutEmail').value.trim();
+      const lineId = document.getElementById('checkoutLine').value.trim();
+      const address = document.getElementById('checkoutAddress').value.trim();
+      const ship = document.getElementById('checkoutShip').value;
+      const pay = document.getElementById('checkoutPay').value;
+      const note = document.getElementById('checkoutNote').value.trim();
+
+      if (!name || !phone || !email) {
+        alert('姓名、電話、Email 為必填欄位，請再確認一下唷～');
+        return;
+      }
+
+      // 3. 取得所有訂單，產生新的訂單編號
+      const allOrders = getAllOrders();
+      const orderId = generateOrderId(allOrders);
+
+      // 4. 計算總金額，同時扣「每個款式」的庫存
+      let totalAmount = 0;
+      cartItems.forEach(item => {
+        totalAmount += item.price * item.qty;
+
+        const p = products.find(p => p.id === item.productId);
+        if (!p || !Array.isArray(p.specs)) return;
+
+        const spec = p.specs.find(s => s.key === item.specKey);
+        if (spec && typeof spec.stock === 'number') {
+          spec.stock = Math.max(0, spec.stock - item.qty); // 扣這個款式的庫存
+        }
+      });
+
+      // 庫存有改變就存回 localStorage
+      saveProductsStateFromProducts();
+
+      // 5. 建立訂單物件
+      const now = new Date();
+      const newOrder = {
+        id: orderId,
+        createdAt: now.toISOString(),
+        completedAt: null,
+        status: 'pending', // pending / completed
+        items: cartItems.map(it => ({
+          productId: it.productId,
+          specKey: it.specKey,
+          name: it.name,
+          specLabel: it.specLabel,
+          price: it.price,
+          qty: it.qty
+        })),
+        totalAmount,
+        customer: {
+          name,
+          phone,
+          email,
+          lineId,
+          address,
+          ship,
+          pay,
+          note
+        }
+      };
+
+      // 6. 寫入 localStorage
+      allOrders.push(newOrder);
+      saveAllOrders(allOrders);
+
+      // 7. 提示使用者訂單已建立
+      alert(
+        '訂單已建立！（假後端已寫入 localStorage）\n\n'
+        + '訂單編號：' + orderId
+        + '\n收件人：' + name
+        + '\n電話：' + phone
+        + '\nEmail：' + email
+        + (lineId ? '\nLine ID：' + lineId : '')
+        + (address ? '\n地址 / 超商：' + address : '')
+        + '\n配送方式：' + ship
+        + '\n付款方式：' + pay
+        + '\n\n總金額：NT$ ' + totalAmount
+        + (note ? '\n備註：' + note : '')
+        + '\n\n接下來可以用「電話 + 訂單編號」到下方訂單查詢頁查進度。'
+      );
+
+      // 8. 清空購物車 & 表單，跳到訂單查詢
+      cartItems = [];
+      cartCount = 0;
+      updateCartBtnText();
+      renderCart();
+
+      checkoutForm.reset();
+      scrollToSection('order-query');
+    });
+  }
+
+
+  // ====== 訂單查詢示意 ======
+  const orderQueryForm = document.getElementById('orderQueryForm');
+  const orderResult = document.getElementById('orderResult');
+
+  if (orderQueryForm && orderResult) {
+    orderQueryForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const phone = document.getElementById('queryPhone').value.trim();
+      const orderId = document.getElementById('queryOrderId').value.trim().toUpperCase();
+
+      if (phone === '0912345678' && orderId === 'ND20250001') {
+        orderResult.className = 'order-result success';
+        orderResult.style.display = 'block';
+        orderResult.innerHTML =
+          '<strong>查詢成功！</strong><br>'
+          + '訂單編號：ND20250001<br>'
+          + '訂單狀態：已出貨，等待超商入店中<br>'
+          + '最近更新時間：2025-01-05 14:32<br>'
+          + '配送方式：7-11 超商取貨<br>'
+          + '備註：到店會再發 Email / Line 通知你。';
+      } else {
+        orderResult.className = 'order-result error';
+        orderResult.style.display = 'block';
+        orderResult.innerHTML =
+          '目前查不到相符的訂單資料（示意）<br>'
+          + '請確認電話與訂單編號是否輸入正確。<br>'
+          + '真正上線時，這裡會連接你的資料庫做查詢。';
+      }
+    });
+  }
+
+  // ====== 初始化：渲染商品列表 & 購物車 ======
+  renderProductGrid('all');
+  renderCart();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+node_modules/
+
+public/images/
+public/images2-帆布袋/
+
+*.db
+*.db-shm
+*.db-wal
+
+*.rar
+*.zip
