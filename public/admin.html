@@ -2,817 +2,1598 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>後台管理｜三小隻日常百貨</title>
+  <title>三小隻日常百貨｜後台</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
       background: #fff9ec;
       color: #4f3b2a;
       line-height: 1.6;
     }
-    header {
-      background: #ffe9b8;
-      padding: 12px 16px;
-      box-shadow: 0 2px 8px rgba(171,132,77,0.35);
+    a {
+      color: inherit;
+      text-decoration: none;
     }
-    .header-inner {
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 249, 236, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #ffe3aa;
+    }
+    .nav {
       max-width: 1100px;
       margin: 0 auto;
+      padding: 10px 16px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
+      gap: 16px;
     }
     .logo {
       display: flex;
       align-items: center;
       gap: 8px;
       font-weight: 700;
+      font-size: 18px;
       color: #e59b29;
     }
     .logo-badge {
       width: 30px;
       height: 30px;
       border-radius: 999px;
-      background: linear-gradient(135deg,#ffe3a7,#fff4ce);
+      background: linear-gradient(135deg, #ffe3a7, #fff4ce);
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 18px;
     }
-    main {
-      max-width: 1100px;
-      margin: 14px auto;
-      padding: 0 16px 24px;
-    }
-    .tag {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #fffdf5;
-      border: 1px solid #ffd98b;
+    .nav-right {
+      font-size: 13px;
       color: #9a7641;
-      display: inline-block;
-      margin-left: 8px;
-    }
-    .card {
-      border-radius: 16px;
-      background: #fffef8;
-      box-shadow: 0 4px 16px rgba(171,132,77,0.25);
-      padding: 14px 16px;
-      margin-bottom: 18px;
-    }
-    .card-title {
-      font-size: 16px;
-      font-weight: 600;
       display: flex;
+      gap: 10px;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-      color: #e59b29;
     }
-    .card-sub {
-      font-size: 12px;
-      color: #9a7641;
-      margin-bottom: 8px;
-    }
-    .btn-primary, .btn-secondary {
+
+    .btn-primary {
       padding: 6px 14px;
       border-radius: 999px;
+      background: linear-gradient(135deg, #f4b73e, #ffd37a);
       border: none;
-      cursor: pointer;
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      white-space: nowrap;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg,#f4b73e,#ffd37a);
       color: #3f2b14;
-      box-shadow: 0 4px 10px rgba(220,158,35,0.35);
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(220, 158, 35, 0.35);
+      transition: transform 0.08s, box-shadow 0.08s;
     }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(220, 158, 35, 0.45);
+    }
+    .btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 6px rgba(220, 158, 35, 0.3);
+    }
+
     .btn-secondary {
-      background: #fff9ec;
+      padding: 5px 10px;
+      border-radius: 999px;
       border: 1px solid #e0c080;
+      background: #fff9ec;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .section-title {
+      margin: 10px 0 14px;
+      font-size: 18px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      color: #e59b29;
+    }
+    .section-title span {
+      font-size: 12px;
+      color: #9a7641;
+    }
+
+    .card {
+      border-radius: 18px;
+      background: #fffef8;
+      padding: 16px 14px;
+      box-shadow: 0 4px 16px rgba(171, 132, 77, 0.25);
+      margin-bottom: 18px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    label {
+      font-size: 13px;
       color: #6b502c;
     }
-    .btn-primary:active, .btn-secondary:active {
-      transform: translateY(1px);
-    }
-    input, select, textarea {
-      font-family: inherit;
-      font-size: 13px;
-      padding: 5px 8px;
+
+    input[type="password"],
+    input[type="text"],
+    input[type="search"],
+    input[type="number"],
+    select,
+    textarea {
+      padding: 6px 8px;
       border-radius: 8px;
       border: 1px solid #e0c080;
-      background: #fffdf5;
+      font-size: 13px;
+      min-width: 200px;
+      font-family: inherit;
     }
-    table {
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #a17f48;
+      margin-top: 6px;
+    }
+    .msg {
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    .msg.error {
+      color: #b5532e;
+    }
+    .msg.success {
+      color: #4e7a1a;
+    }
+
+    /* 訂單列表 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #fff7df;
+      border: 1px solid #f0d9a4;
+      color: #8b6a3b;
+    }
+
+    .badge-status {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid;
+      display: inline-block;
+    }
+    .status-new {
+      border-color: #e5a03d;
+      background: #fff7df;
+      color: #945716;
+    }
+    .status-completed {
+      border-color: #89b64d;
+      background: #f4ffe5;
+      color: #486022;
+    }
+    .status-cancelled {
+      border-color: #c66a6a;
+      background: #ffecec;
+      color: #8a3030;
+    }
+
+    .order-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 580px;
+      overflow: auto;
+    }
+    .order-card {
+      border-radius: 14px;
+      border: 1px solid #f0d9a4;
+      background: #fffdf5;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    .order-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .order-id {
+      font-weight: 700;
+      color: #4f3b2a;
+    }
+    .order-meta {
+      font-size: 12px;
+      color: #9a7641;
+    }
+
+    .order-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .order-block {
+      min-width: 220px;
+    }
+    .order-block-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #7a5c3a;
+      margin-bottom: 2px;
+    }
+
+    .order-items-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 12px;
     }
-    th, td {
-      padding: 4px 6px;
+    .order-items-table th,
+    .order-items-table td {
+      padding: 2px 4px;
+      border-bottom: 1px dashed #f0d9a4;
+    }
+    .order-items-table th {
+      text-align: left;
+      color: #9a7641;
+      font-weight: 500;
+    }
+
+    .order-actions {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .btn-small {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #e0c080;
+      background: #fff9ec;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-small.primary {
+      background: #ffe9b8;
+      border-color: #f4b73e;
+      color: #5a3c11;
+    }
+
+    .empty-text {
+      font-size: 13px;
+      color: #a17f48;
+    }
+
+    /* 商品管理 */
+    .product-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .product-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px 14px;
+      margin-top: 8px;
+    }
+    .product-form-item label {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .product-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .product-table th,
+    .product-table td {
+      padding: 6px 8px;
       border-bottom: 1px solid #f0d9a4;
+      text-align: left;
       vertical-align: top;
     }
-    th {
+    .product-table th {
       background: #fff7df;
+      color: #7a5c3a;
       font-weight: 600;
-      color: #7b5b30;
-      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
-    .pill {
+
+    .product-status-on {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 999px;
+      background: #f4ffe5;
+      border: 1px solid #89b64d;
       font-size: 11px;
+      color: #486022;
     }
-    .pill-pending {
-      background: #fff3cd;
-      color: #856404;
+    .product-status-off {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #ffecec;
+      border: 1px solid #c66a6a;
+      font-size: 11px;
+      color: #8a3030;
     }
-    .pill-completed {
-      background: #d4edda;
-      color: #155724;
+
+    .product-table-wrapper {
+      max-height: 420px;
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px solid #f0d9a4;
+      margin-top: 6px;
+      background: #fffdf5;
     }
-    details summary {
-      cursor: pointer;
-      color: #a36822;
+
+    .product-img-preview {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #f0d9a4;
+      background: #fff;
     }
-    .flex-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-    .mt-8 { margin-top: 8px; }
-    .mt-12 { margin-top: 12px; }
-    .text-right { text-align: right; }
-    .text-center { text-align: center; }
-    .muted { color: #9a7641; font-size: 12px; }
-.scroll-box {
-  max-height: 500px; /* 加大高度 */
-  overflow-y: scroll;
-  background: #fffdf5;
-  padding: 8px;
-  border-radius: 10px;
-  border: 1px dashed #f0d9a4;
-}
+
     @media (max-width: 768px) {
-      .header-inner {
-        flex-direction: column;
-        align-items: flex-start;
+      .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      input[type="password"],
+      input[type="text"],
+      input[type="search"],
+      input[type="number"],
+      select,
+      textarea {
+        min-width: 0;
+        flex: 1;
       }
     }
   </style>
 </head>
 <body>
 <header>
-  <div class="header-inner">
+  <div class="nav">
     <div class="logo">
       <div class="logo-badge">☀</div>
-      後台管理｜三小隻日常百貨
+      三小隻日常百貨 · 後台
     </div>
-<div class="muted">
-  連線後端 server.js，讀取訂單 / 商品設定資料庫（SQLite）
-</div>
+    <div class="nav-right">
+      <span id="adminStatus">尚未登入</span>
+      <button class="btn-secondary" id="logoutBtn" style="display:none;">登出</button>
+      <a href="/" class="btn-secondary">回前台</a>
+    </div>
   </div>
 </header>
 
 <main>
-  <!-- 登入卡片 -->
-  <section class="card" id="loginCard">
-    <div class="card-title">
+  <!-- 登入區 -->
+  <section class="card" id="loginSection">
+    <h2 class="section-title">
       後台登入
-      <span class="tag">預設密碼 demo123</span>
+      <span>目前使用簡單密碼登入，之後可以再進化成帳號系統</span>
+    </h2>
+    <p style="font-size:13px;color:#6b502c;">
+      這個頁面是給店長用的訂單 / 商品管理畫面。<br>
+      暫時使用一組後台密碼（例：<code>demo123</code>），只有知道密碼的人可以查看。
+    </p>
+    <div class="form-row">
+      <label for="adminPasswordInput">後台密碼：</label>
+      <input type="password" id="adminPasswordInput" placeholder="請輸入後台密碼">
+      <button class="btn-primary" id="loginBtn">登入</button>
     </div>
-<p class="card-sub">
-  這是「真實後台」，所有訂單與商品設定都會寫入伺服器的 SQLite 資料庫。<br>
-  前台結帳產生的訂單會同步到這裡，你可以管理訂單、調整價格與庫存。
-</p>
-    <div class="flex-row mt-8">
-      <input type="password" id="adminPassword" placeholder="請輸入後台密碼（demo123）">
-      <button type="button" class="btn-primary" id="adminLoginBtn">登入</button>
-      <span id="adminLoginMsg" class="muted" style="color:#b5532e;"></span>
+    <div class="hint">
+      ※ 密碼只存在這台裝置的記憶體中，不會存到 localStorage。<br>
+      ※ 如果登入失敗，請確認 server.js 裡的管理密碼是否一致。
+    </div>
+    <div id="loginMsg" class="msg"></div>
+  </section>
+
+  <!-- 訂單管理 -->
+  <section class="card" id="ordersSection" style="display:none;">
+    <h2 class="section-title">
+      訂單管理
+      <span>查看今天訂單、標記已完成、查詢歷史訂單</span>
+    </h2>
+
+    <div class="toolbar">
+      <div>
+        <span class="badge">今日訂單：<span id="todayCount">0</span> 筆</span>
+        <span class="badge">全部訂單：<span id="totalCount">0</span> 筆</span>
+      </div>
+
+      <div style="flex:1;"></div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <label style="font-size:12px;">狀態篩選：</label>
+        <select id="statusFilter">
+          <option value="all">全部</option>
+          <option value="new">未完成 / 新訂單</option>
+          <option value="completed">已完成</option>
+          <option value="cancelled">已取消</option>
+        </select>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <label style="font-size:12px;">搜尋：</label>
+        <input type="search" id="searchInput" placeholder="手機、訂單編號、姓名、Email">
+      </div>
+
+      <button class="btn-secondary" id="refreshBtn">重新載入</button>
+    </div>
+
+    <div id="ordersContainer" class="order-list"></div>
+    <div id="ordersEmpty" class="empty-text" style="display:none;">
+      目前沒有符合條件的訂單。
     </div>
   </section>
 
-  <!-- 真正的後台內容 -->
-  <section id="adminPanel" style="display:none;">
-    <!-- 總覽 -->
-    <section class="card">
-      <div class="card-title">
-        後台總覽
-      </div>
-      <div class="flex-row">
-        <div>
-          <div class="muted">目前訂單筆數</div>
-          <div id="summaryOrderCount" style="font-size:20px; font-weight:700; color:#e59b29;">0</div>
-        </div>
-        <div>
-          <div class="muted">已完結訂單</div>
-          <div id="summaryCompletedCount" style="font-size:20px; font-weight:700; color:#8fbc50;">0</div>
-        </div>
-        <div>
-          <div class="muted">訂單總金額</div>
-          <div id="summaryTotalAmount" style="font-size:20px; font-weight:700; color:#e08a1e;">NT$ 0</div>
-        </div>
-      </div>
-    </section>
+  <!-- 商品管理 -->
+  <section class="card" id="productsSection" style="display:none;">
+    <h2 class="section-title">
+      商品管理
+      <span>新增 / 編輯 / 下架商品，前台會吃這裡的資料</span>
+    </h2>
 
-    <!-- 商品管理：價格 / 各款式庫存 -->
-    <section class="card">
-      <div class="card-title">
-        商品管理
-        <span class="tag">可調價格與每個款式庫存</span>
-      </div>
-    <p class="card-sub">
-  這裡會讀取商品的基本資料，實際價格與庫存以後端資料庫為主。<br>
-  修改後請記得按「儲存」，會即時寫入伺服器上的 SQLite。
-</p>
-      <div id="adminProducts" class="scroll-box">
-        （載入中…）
-      </div>
-    </section>
+    <!-- 商品編輯表單 -->
+    <form id="productForm">
+      <div class="product-form">
+        <div class="product-form-item">
+          <label for="productCode">商品編號</label>
+          <input type="text" id="productCode" placeholder="例：BAG-001">
+        </div>
+        <div class="product-form-item">
+          <label for="productName">商品名稱</label>
+          <input type="text" id="productName" required placeholder="例：Chiikawa 吉伊卡哇帆布袋">
+        </div>
+        <div class="product-form-item">
+          <label for="productPrice">售價 (NT$)</label>
+          <input type="number" id="productPrice" required min="0" step="1" placeholder="例：150">
+        </div>
+        <div class="product-form-item">
+          <label for="productStock">總庫存數量</label>
+          <input type="number" id="productStock" required min="0" step="1" placeholder="例：100">
+        </div>
+        <div class="product-form-item">
+          <label for="productCategory">分類</label>
+          <input type="text" id="productCategory" placeholder="例：帆布袋 / 生活小物">
+        </div>
+        <div class="product-form-item">
+          <label for="productStatus">狀態</label>
+          <select id="productStatus">
+            <option value="on">上架中</option>
+            <option value="off">已下架</option>
+          </select>
+        </div>
+        <div class="product-form-item">
+          <label for="productImageUrl">主圖圖片網址</label>
+          <input type="text" id="productImageUrl" placeholder="貼上 Supabase 圖片網址（主圖）">
+        </div>
+        <div class="product-form-item" style="grid-column:1/-1;">
+          <label for="productDescription">商品簡介 / 廣告詞</label>
+          <textarea id="productDescription" placeholder="例：有任何問題聊聊私訊詢問😆 可拍實物圖確認後再寄出☺️"></textarea>
+        </div>
 
-    <!-- 訂單管理 -->
-    <section class="card">
-      <div class="card-title">
-        訂單管理
-        <span class="tag">可改訂單狀態、查看明細</span>
-      </div>
-      <div class="flex-row mt-8">
-        <button type="button" class="btn-secondary" id="btnRefreshOrders">重新載入訂單</button>
-        <span class="muted">狀態改為「已完結」時會自動記錄完結時間。</span>
-      </div>
-      <div id="adminOrders" class="scroll-box mt-8">
-        （目前沒有訂單）
-      </div>
-    </section>
+        <!-- 款式與庫存 -->
+        <div class="product-form-item" style="grid-column:1/-1;">
+          <label>款式與庫存</label>
+          <div class="hint">
+            例：款式 1 / 10、款式 2 / 5。若不填，前台只看「總庫存數量」。
+          </div>
+          <div id="variantsContainer"></div>
+          <button type="button" class="btn-secondary" id="addVariantBtn" style="margin-top:6px;">
+            新增款式
+          </button>
+        </div>
 
-    <!-- 每月銷量統計 -->
-    <section class="card">
-      <div class="card-title">
-        每月銷量統計
-        <span class="tag">依訂單資料自動統計</span>
+        <!-- 詳細小圖上傳 -->
+        <div class="product-form-item" style="grid-column:1/-1;">
+          <label>商品詳細小圖</label>
+          <div class="hint">
+            類似蝦皮商品頁下面的小圖，可以多張。這裡上傳到 Supabase，並存成圖片網址陣列。
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px;">
+            <input type="file" id="productDetailImagesInput" accept="image/*" multiple>
+            <button type="button" class="btn-secondary" id="productDetailImagesUploadBtn">
+              上傳詳細圖片
+            </button>
+            <span id="productDetailImagesStatus" class="hint">可多選圖片上傳</span>
+          </div>
+          <div id="productDetailImagesPreview" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
       </div>
-      <div class="flex-row mt-8">
-        <label class="muted">
-          統計月份：
-          <input type="month" id="adminMonth">
-        </label>
-        <button type="button" class="btn-secondary" id="adminRefreshStats">
-          重新計算
-        </button>
+
+      <!-- 編號快速載入 -->
+      <div class="form-row" style="margin-top:8px;">
+        <label style="font-size:12px;">輸入商品編號載入：</label>
+        <input type="text" id="productCodeSearchInput" placeholder="輸入編號後按『載入』">
+        <button type="button" class="btn-secondary" id="productCodeSearchBtn">載入</button>
       </div>
-      <div id="adminStats" class="mt-8 muted">
-        尚未選擇月份。
+
+      <div class="form-row" style="margin-top:10px;justify-content:flex-end;">
+        <span id="productFormStatus" class="hint" style="flex:1;">目前狀態：新增新商品</span>
+        <button type="button" class="btn-secondary" id="productFormResetBtn">清空</button>
+        <button type="submit" class="btn-primary" id="productFormSubmitBtn">新增商品</button>
       </div>
-    </section>
+    </form>
+
+    <!-- 商品列表 Toolbar -->
+    <div class="product-toolbar" style="margin-top:14px;">
+      <div>
+        <span class="badge">商品總數：<span id="productTotalCount">0</span> 個</span>
+      </div>
+
+      <div style="flex:1;"></div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <label style="font-size:12px;">快速選擇商品：</label>
+        <select id="productCodeSelect">
+          <option value="">選擇商品編號…</option>
+        </select>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <label style="font-size:12px;">狀態篩選：</label>
+        <select id="productStatusFilter">
+          <option value="all">全部</option>
+          <option value="on">上架中</option>
+          <option value="off">已下架</option>
+        </select>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <label style="font-size:12px;">搜尋：</label>
+        <input type="search" id="productSearchInput" placeholder="名稱、分類關鍵字">
+      </div>
+
+      <button type="button" class="btn-secondary" id="productRefreshBtn">重新載入</button>
+    </div>
+
+    <div id="productsEmpty" class="empty-text" style="display:none;">
+      目前沒有商品資料。
+    </div>
+
+    <div class="product-table-wrapper" id="productsTableWrapper" style="display:none;">
+      <table class="product-table">
+        <thead>
+          <tr>
+            <th style="width:70px;">主圖</th>
+            <th style="width:110px;">商品編號</th>
+            <th>名稱 / 分類</th>
+            <th style="width:80px;">售價</th>
+            <th style="width:80px;">總庫存</th>
+            <th style="width:90px;">狀態</th>
+            <th style="width:110px;">款式數</th>
+            <th style="width:150px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="productsTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 圖片上傳測試區 -->
+  <section class="card" id="imageUploadSection" style="display:none;">
+    <h2 class="section-title">
+      商品圖片上傳（Supabase 測試）
+      <span>之後會整合進商品主圖 / 小圖欄位</span>
+    </h2>
+
+    <p style="font-size:13px; color:#666;">
+      選一張圖片按「上傳」，系統會丟到 Supabase 的「產品圖片」桶，並回傳公開網址。<br>
+      未來會把這個網址存進商品資料表，用來顯示圖片。
+    </p>
+
+    <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+      <input type="file" id="uploadFileInput" accept="image/*">
+      <button type="button" id="uploadFileBtn" class="btn-primary">上傳圖片</button>
+      <span id="uploadStatus" style="font-size:12px; color:#a36a1a;"></span>
+    </div>
+
+    <div id="uploadResult" style="margin-top:12px; font-size:13px; display:none;">
+      圖片網址：<br>
+      <a id="uploadUrl" href="#" target="_blank"></a>
+    </div>
   </section>
 </main>
 
 <script>
-  // ================== 後端位址設定 ==================
-  // 未來伺服器如果不在同一台，只要改這裡的網址即可
-const API_BASE = 'https://sanxiaozi-shop.onrender.com'; // 或 const API_BASE = window.location.origin;
+  // === Supabase 設定 ===
+  const SUPABASE_URL = 'https://ckqdimygblkasofycwvr.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_U_ddXefuPHjG2gVvO5p3bQ_OrTAK1hl';
+  const IMAGE_BUCKET = 'product-images';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // === API_BASE ===
+  
+  
+// const API_BASE = 'http://localhost:3000';  // ❌ 這行註解掉
+const API_BASE = window.location.origin;      // ✅
 
-  // ============ 商品基本資料（給後台用，與前台對應） ============
-  // 這裡只需要 id / name / specs(key + label)，不需要圖片
-  const products = [
-    {
-      id: 'chiikawa',
-      name: 'Chiikawa 吉伊卡哇 A6 活頁記事本',
-      specs: [
-        { key: 'usagi', label: '烏薩奇（黃）' },
-        { key: 'kuri',  label: '小八（藍）' },
-        { key: 'chii',  label: '吉伊（粉）' }
-      ]
-    },
-    {
-      id: 'product-thermo',
-      name: '520ml 316不鏽鋼保溫杯',
-      specs: [
-        { key: '537-01', label: '537保溫杯-01' },
-        { key: '537-02', label: '537保溫杯-02' },
-        { key: '537-03', label: '537保溫杯-03' },
-        { key: '537-04', label: '537保溫杯-04' },
-        { key: '537-05', label: '537保溫杯-05' },
-        { key: '537-06', label: '537保溫杯-06' },
-        { key: '537-07', label: '537保溫杯-07' },
-        { key: '537-08', label: '537保溫杯-08' },
-        { key: 'chi-01', label: 'chiikawa保溫杯-01' },
-        { key: 'chi-02', label: 'chiikawa保溫杯-02' },
-        { key: 'chi-03', label: 'chiikawa保溫杯-03' },
-        { key: 'chi-04', label: 'chiikawa保溫杯-04' },
-        { key: 'ge-01',  label: 'ge保溫杯-01' },
-        { key: 'ko-08-01', label: '小八保溫杯-01' },
-        { key: 'ko-08-02', label: '小八保溫杯-02' }
-      ]
-    },
-    {
-      id: 'cup-new-chiikawa',
-      name: '500ml 新款 Chiikawa 316不鏽鋼保溫杯',
-      specs: [
-        { key: 'n-01', label: '新款chiikawa保溫杯-01' },
-        { key: 'n-02', label: '新款chiikawa保溫杯-02' },
-        { key: 'n-03', label: '新款chiikawa保溫杯-03' },
-        { key: 'n-04', label: '新款chiikawa保溫杯-04' },
-        { key: 'n-05', label: '新款chiikawa保溫杯-05' },
-        { key: 'n-06', label: '新款chiikawa保溫杯-06' },
-        { key: 'n-07', label: '新款chiikawa保溫杯-07' },
-        { key: 'n-08', label: '新款chiikawa保溫杯-08' },
-        { key: 'n-09', label: '新款chiikawa保溫杯-09' },
-        { key: 'n-10', label: '新款chiikawa保溫杯-10' }
-      ]
-    },
-    {
-      id: 'chiikawa-bag',
-      name: 'Chiikawa 吉伊卡哇帆布袋',
-      specs: [
-        { key: 'b1',  label: '款式 1' },
-        { key: 'b2',  label: '款式 2' },
-        { key: 'b3',  label: '款式 3' },
-        { key: 'b4',  label: '款式 4' },
-        { key: 'b5',  label: '款式 5' },
-        { key: 'b6',  label: '款式 6' },
-        { key: 'b7',  label: '款式 7' },
-        { key: 'b8',  label: '款式 8' },
-        { key: 'b9',  label: '款式 9' },
-        { key: 'b10', label: '款式 10' },
-        { key: 'b11', label: '款式 11' },
-        { key: 'b12', label: '款式 12' },
-        { key: 'b13', label: '款式 13' },
-        { key: 'b14', label: '款式 14' },
-        { key: 'b15', label: '款式 15' },
-        { key: 'b16', label: '款式 16' },
-        { key: 'b17', label: '款式 17' },
-        { key: 'b18', label: '款式 18' },
-        { key: 'b19', label: '款式 19' },
-        { key: 'b20', label: '款式 20' }
-      ]
+  // === 後台狀態 ===
+  let adminPassword = '';
+  let adminToken = '';
+  let allOrders = [];
+  let allProducts = [];
+  let editingProductId = null;
+  let currentDetailImages = []; // 詳細小圖 Supabase URL 陣列
+
+  // === DOM 快取 ===
+  const loginSection = document.getElementById('loginSection');
+  const ordersSection = document.getElementById('ordersSection');
+  const productsSection = document.getElementById('productsSection');
+  const imageUploadSection = document.getElementById('imageUploadSection');
+
+  const adminStatus = document.getElementById('adminStatus');
+  const loginMsg = document.getElementById('loginMsg');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const loginBtn = document.getElementById('loginBtn');
+
+  const todayCountEl = document.getElementById('todayCount');
+  const totalCountEl = document.getElementById('totalCount');
+  const statusFilter = document.getElementById('statusFilter');
+  const searchInput = document.getElementById('searchInput');
+  const ordersContainer = document.getElementById('ordersContainer');
+  const ordersEmpty = document.getElementById('ordersEmpty');
+
+  // 商品管理 DOM
+  const productForm = document.getElementById('productForm');
+  const productNameInput = document.getElementById('productName');
+  const productCodeInput = document.getElementById('productCode');
+  const productPriceInput = document.getElementById('productPrice');
+  const productStockInput = document.getElementById('productStock');
+  const productCategoryInput = document.getElementById('productCategory');
+  const productStatusInput = document.getElementById('productStatus');
+  const productImageUrlInput = document.getElementById('productImageUrl');
+  const productDescriptionInput = document.getElementById('productDescription');
+  const productFormStatus = document.getElementById('productFormStatus');
+  const productFormResetBtn = document.getElementById('productFormResetBtn');
+  const productFormSubmitBtn = document.getElementById('productFormSubmitBtn');
+  const productTotalCountEl = document.getElementById('productTotalCount');
+  const productStatusFilter = document.getElementById('productStatusFilter');
+  const productSearchInput = document.getElementById('productSearchInput');
+  const productRefreshBtn = document.getElementById('productRefreshBtn');
+  const productsEmpty = document.getElementById('productsEmpty');
+  const productsTableWrapper = document.getElementById('productsTableWrapper');
+  const productsTableBody = document.getElementById('productsTableBody');
+
+  const productCodeSelect = document.getElementById('productCodeSelect');
+  const productCodeSearchInput = document.getElementById('productCodeSearchInput');
+  const productCodeSearchBtn = document.getElementById('productCodeSearchBtn');
+
+  const variantsContainer = document.getElementById('variantsContainer');
+  const addVariantBtn = document.getElementById('addVariantBtn');
+
+  const productDetailImagesInput = document.getElementById('productDetailImagesInput');
+  const productDetailImagesUploadBtn = document.getElementById('productDetailImagesUploadBtn');
+  const productDetailImagesStatus = document.getElementById('productDetailImagesStatus');
+  const productDetailImagesPreview = document.getElementById('productDetailImagesPreview');
+
+  const uploadFileInput = document.getElementById('uploadFileInput');
+  const uploadFileBtn = document.getElementById('uploadFileBtn');
+  const uploadStatus = document.getElementById('uploadStatus');
+  const uploadResult = document.getElementById('uploadResult');
+  const uploadUrl = document.getElementById('uploadUrl');
+
+  // === 共用 API helpers（自動帶 x-admin-token） ===
+  function buildHeaders(withJson) {
+    const headers = {};
+    if (withJson) headers['Content-Type'] = 'application/json';
+    if (adminToken) headers['x-admin-token'] = adminToken;
+    return headers;
+  }
+
+  async function apiPost(path, data) {
+    const res = await fetch(API_BASE + path, {
+      method: 'POST',
+      headers: buildHeaders(true),
+      body: JSON.stringify(data || {})
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      const msg = json.message || ('HTTP ' + res.status);
+      throw new Error(msg);
     }
-  ];
+    return json;
+  }
 
-  // ============ 與後端溝通用 ============
+  async function apiGet(path) {
+    const res = await fetch(API_BASE + path, {
+      headers: buildHeaders(false)
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      const msg = json.message || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    return json;
+  }
 
-  // 全域訂單快取（避免每個功能都重抓）
-  let cachedOrders = [];
+  async function apiPatch(path, data) {
+    const res = await fetch(API_BASE + path, {
+      method: 'PATCH',
+      headers: buildHeaders(true),
+      body: JSON.stringify(data || {})
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      const msg = json.message || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    return json;
+  }
 
-  // 從後端載入商品狀態（價格 / 各款式庫存）
-  async function loadProductsStateFromServer() {
-    try {
-      const res = await fetch(`${API_BASE}/api/product-state`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const saved = await res.json(); // { [productId]: { price, priceNote, stocks } }
+  async function apiDelete(path) {
+    const res = await fetch(API_BASE + path, {
+      method: 'DELETE',
+      headers: buildHeaders(true)
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      const msg = json.message || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    return json;
+  }
 
-      products.forEach(p => {
-        const m = saved[p.id];
-        if (!m) return;
+  // === 小工具 ===
+  function showLoginMsg(text, isError) {
+    loginMsg.textContent = text;
+    loginMsg.className = 'msg ' + (isError ? 'error' : 'success');
+  }
 
-        if (typeof m.price === 'number') p.price = m.price;
-        if (typeof m.priceNote === 'string') p.priceNote = m.priceNote;
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
 
-        if (m.stocks && Array.isArray(p.specs)) {
-          p.specs.forEach(spec => {
-            const sVal = m.stocks[spec.key];
-            if (typeof sVal === 'number') {
-              spec.stock = sVal;
-            }
-          });
-        }
-      });
-    } catch (e) {
-      console.warn('loadProductsStateFromServer error', e);
-      alert('無法從後端載入商品設定（價格 / 庫存），請確認伺服器是否正常運作。');
+  function formatDateTime(v) {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  function calcOrderTotal(items) {
+    return (items || []).reduce((sum, it) => {
+      const price = typeof it.price === 'number' ? it.price : 0;
+      const qty = typeof it.qty === 'number' ? it.qty : 0;
+      return sum + price * qty;
+    }, 0);
+  }
+
+  function getShipText(code) {
+    switch (code) {
+      case '711': return '超商取貨（7-11）';
+      case 'family': return '超商取貨（全家）';
+      case 'home': return '宅配到府';
+      default: return code || '—';
     }
   }
 
-  // 把某一個商品的價格 + 庫存存回後端
-  async function saveProductStateToServer(product) {
-    const stocks = {};
-    if (Array.isArray(product.specs)) {
-      product.specs.forEach(spec => {
-        if (typeof spec.stock === 'number') {
-          stocks[spec.key] = spec.stock;
-        }
+  function getPayText(code) {
+    switch (code) {
+      case 'cod': return '貨到付款';
+      case 'transfer': return '銀行轉帳';
+      case 'card': return '信用卡';
+      default: return code || '—';
+    }
+  }
+
+  function getStatusClass(status) {
+    switch (status) {
+      case 'completed': return 'status-completed';
+      case 'cancelled': return 'status-cancelled';
+      default: return 'status-new';
+    }
+  }
+
+  function getStatusText(status) {
+    switch (status) {
+      case 'completed': return '已完成';
+      case 'cancelled': return '已取消';
+      default: return '未完成 / 新訂單';
+    }
+  }
+
+  // === 登入 / 登出 ===
+  loginBtn.addEventListener('click', async () => {
+    const pwd = document.getElementById('adminPasswordInput').value.trim();
+    if (!pwd) {
+      showLoginMsg('請先輸入後台密碼。', true);
+      return;
+    }
+
+    showLoginMsg('登入中…', false);
+
+    try {
+      const result = await apiPost('/api/admin/login', { password: pwd });
+      const ok = result.success || result.ok;
+      if (ok) {
+        adminPassword = pwd;
+        adminToken = result.token || '';
+        adminStatus.textContent = '已登入';
+        showLoginMsg(result.message || '登入成功', false);
+        logoutBtn.style.display = 'inline-block';
+
+        loginSection.style.display = 'none';
+        ordersSection.style.display = 'block';
+        productsSection.style.display = 'block';
+        imageUploadSection.style.display = 'block';
+
+        await loadOrders();
+        await loadProducts();
+      } else {
+        showLoginMsg(result.message || '登入失敗', true);
+      }
+    } catch (err) {
+      console.error(err);
+      showLoginMsg('登入失敗：' + err.message, true);
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      if (adminToken) {
+        await apiPost('/api/admin/logout', {});
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    adminPassword = '';
+    adminToken = '';
+    allOrders = [];
+    allProducts = [];
+
+    adminStatus.textContent = '尚未登入';
+    logoutBtn.style.display = 'none';
+
+    ordersContainer.innerHTML = '';
+    productsTableBody.innerHTML = '';
+    productsTableWrapper.style.display = 'none';
+    productsEmpty.style.display = 'none';
+
+    loginSection.style.display = 'block';
+    ordersSection.style.display = 'none';
+    productsSection.style.display = 'none';
+    imageUploadSection.style.display = 'none';
+  });
+
+  // === 訂單：載入 / 渲染 / 狀態修改 ===
+  async function loadOrders() {
+    ordersContainer.innerHTML = '';
+    ordersEmpty.style.display = 'none';
+
+    try {
+      const data = await apiGet('/api/admin/orders');
+      const orders = data.orders || data.data || [];
+      allOrders = Array.isArray(orders) ? orders : [];
+      renderOrders();
+    } catch (err) {
+      console.error(err);
+      ordersContainer.innerHTML =
+        '<div class="empty-text">載入訂單失敗：' +
+        escapeHtml(err.message) +
+        '<br>請確認 /api/admin/orders 是否有實作。</div>';
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', loadOrders);
+  statusFilter.addEventListener('change', renderOrders);
+  searchInput.addEventListener('input', renderOrders);
+
+  function renderOrders() {
+    ordersContainer.innerHTML = '';
+
+    let filtered = allOrders.slice();
+
+    const statusVal = statusFilter.value;
+    if (statusVal !== 'all') {
+      filtered = filtered.filter(o => (o.status || 'new') === statusVal);
+    }
+
+    const keyword = searchInput.value.trim().toLowerCase();
+    if (keyword) {
+      filtered = filtered.filter(o => {
+        const fields = [
+          o.id || '',
+          (o.customer && o.customer.name) || '',
+          (o.customer && o.customer.phone) || '',
+          (o.customer && o.customer.email) || ''
+        ].join(' ').toLowerCase();
+        return fields.includes(keyword);
       });
     }
+
+    // 統計
+    totalCountEl.textContent = allOrders.length.toString();
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const todayOrders = allOrders.filter(o => {
+      if (!o.createdAt) return false;
+      const d = new Date(o.createdAt);
+      if (isNaN(d.getTime())) return false;
+      return d.toISOString().slice(0, 10) === todayStr;
+    });
+    todayCountEl.textContent = todayOrders.length.toString();
+
+    if (filtered.length === 0) {
+      ordersEmpty.style.display = 'block';
+      return;
+    }
+    ordersEmpty.style.display = 'none';
+
+    filtered.forEach(o => {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+
+      const createdAt = o.createdAt ? formatDateTime(o.createdAt) : '—';
+      const statusClass = getStatusClass(o.status);
+      const statusText = getStatusText(o.status);
+      const customer = o.customer || {};
+      const items = Array.isArray(o.items) ? o.items : [];
+      const totalAmount = typeof o.totalAmount === 'number'
+        ? o.totalAmount
+        : calcOrderTotal(items);
+
+      card.innerHTML = `
+        <div class="order-header">
+          <div>
+            <div class="order-id">訂單編號：${escapeHtml(o.id || '')}</div>
+            <div class="order-meta">
+              建立時間：${escapeHtml(createdAt)}
+              · 狀態：
+              <span class="badge-status ${statusClass}">${statusText}</span>
+            </div>
+          </div>
+          <div class="order-meta">
+            總金額：<strong>NT$ ${totalAmount}</strong>
+          </div>
+        </div>
+
+        <div class="order-row">
+          <div class="order-block">
+            <div class="order-block-title">收件人資訊</div>
+            <div>${escapeHtml(customer.name || '—')}</div>
+            <div>手機：${escapeHtml(customer.phone || '—')}</div>
+            <div>Email：${escapeHtml(customer.email || '—')}</div>
+            <div>Line ID：${escapeHtml(customer.lineId || '—')}</div>
+          </div>
+
+          <div class="order-block">
+            <div class="order-block-title">配送 / 付款</div>
+            <div>配送方式：${escapeHtml(getShipText(customer.ship))}</div>
+            <div>付款方式：${escapeHtml(getPayText(customer.pay))}</div>
+            <div>地址 / 取貨門市：</div>
+            <div>${escapeHtml(customer.address || '—')}</div>
+          </div>
+
+          <div class="order-block" style="flex:1;min-width:260px;">
+            <div class="order-block-title">商品明細</div>
+            <table class="order-items-table">
+              <thead>
+                <tr>
+                  <th>商品</th>
+                  <th>款式</th>
+                  <th>數量</th>
+                  <th>單價</th>
+                  <th>小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(it => {
+                  const lineTotal = (it.price || 0) * (it.qty || 0);
+                  return `
+                    <tr>
+                      <td>${escapeHtml(it.name || '')}</td>
+                      <td>${escapeHtml(it.specLabel || '')}</td>
+                      <td>${it.qty || 0}</td>
+                      <td>${it.price || 0}</td>
+                      <td>${lineTotal}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="order-row" style="margin-top:8px;">
+          <div class="order-block" style="flex:1;">
+            <div class="order-block-title">備註</div>
+            <div>${escapeHtml(customer.note || '（無備註）')}</div>
+          </div>
+        </div>
+
+        <div class="order-actions">
+          <button class="btn-small" data-action="mark-new">標記為未完成</button>
+          <button class="btn-small primary" data-action="mark-done">標記為已完成</button>
+          <button class="btn-small" data-action="mark-cancel">標記為已取消</button>
+        </div>
+      `;
+
+      const btnNew = card.querySelector('[data-action="mark-new"]');
+      const btnDone = card.querySelector('[data-action="mark-done"]');
+      const btnCancel = card.querySelector('[data-action="mark-cancel"]');
+
+      btnNew.addEventListener('click', () => changeOrderStatus(o.id, 'new'));
+      btnDone.addEventListener('click', () => changeOrderStatus(o.id, 'completed'));
+      btnCancel.addEventListener('click', () => changeOrderStatus(o.id, 'cancelled'));
+
+      ordersContainer.appendChild(card);
+    });
+  }
+
+  async function changeOrderStatus(orderId, status) {
+    if (!orderId) return;
+    const label = getStatusText(status);
+    const ok = confirm(`確定要將訂單「${orderId}」標記為「${label}」嗎？`);
+    if (!ok) return;
+
+    try {
+      await apiPatch('/api/admin/orders/' + encodeURIComponent(orderId), { status });
+      const target = allOrders.find(o => o.id === orderId);
+      if (target) target.status = status;
+      renderOrders();
+      alert('訂單狀態已更新為：' + label);
+    } catch (err) {
+      console.error(err);
+      alert('更新失敗：' + err.message);
+    }
+  }
+
+  // === 商品：工具 ===
+  function updateProductCodeSelect() {
+    productCodeSelect.innerHTML = '<option value="">選擇商品編號…</option>';
+    const list = allProducts
+      .slice()
+      .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+    list.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      const code = p.code || '(無編號)';
+      opt.textContent = code + ' - ' + (p.name || '');
+      productCodeSelect.appendChild(opt);
+    });
+  }
+
+  // 更新每一列款式的「圖片下拉選單」
+  function updateVariantImageOptions() {
+    const rows = variantsContainer.querySelectorAll('.variant-row');
+    rows.forEach(row => {
+      const select = row.querySelector('.variant-image');
+      if (!select) return;
+
+      const selectedBefore = select.value || select.dataset.selectedImage || '';
+      select.innerHTML = '';
+
+      const optDefault = document.createElement('option');
+      optDefault.value = '';
+      optDefault.textContent = '使用主圖';
+      select.appendChild(optDefault);
+
+      currentDetailImages.forEach((url, index) => {
+        const opt = document.createElement('option');
+        opt.value = url;
+        opt.textContent = `圖片${index + 1}`;
+        select.appendChild(opt);
+      });
+
+      if (selectedBefore) {
+        select.value = selectedBefore;
+      }
+    });
+  }
+
+  // 新增一列款式（名稱 + 庫存 + 圖片選擇）
+  function addVariantRow(variant) {
+    const row = document.createElement('div');
+    row.className = 'variant-row';
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.marginTop = '4px';
+    row.style.alignItems = 'center';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'variant-name';
+    nameInput.placeholder = '款式名稱（例：紅、藍、1、2、3）';
+    nameInput.value = variant && variant.name ? variant.name : '';
+
+    const stockInput = document.createElement('input');
+    stockInput.type = 'number';
+    stockInput.className = 'variant-stock';
+    stockInput.placeholder = '庫存';
+    stockInput.min = '0';
+    stockInput.step = '1';
+    stockInput.style.width = '70px';
+    stockInput.value =
+      variant && typeof variant.stock === 'number'
+        ? variant.stock
+        : (variant && variant.stock) || '';
+
+    const imgSelect = document.createElement('select');
+    imgSelect.className = 'variant-image';
+    imgSelect.style.minWidth = '120px';
+    imgSelect.dataset.selectedImage = (variant && variant.imageUrl) || '';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-small';
+    removeBtn.textContent = '刪除';
+    removeBtn.addEventListener('click', () => {
+      row.remove();
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(stockInput);
+    row.appendChild(imgSelect);
+    row.appendChild(removeBtn);
+    variantsContainer.appendChild(row);
+
+    updateVariantImageOptions();
+  }
+
+  // 從表單讀出所有款式
+  function getVariantsFromForm() {
+    const rows = variantsContainer.querySelectorAll('.variant-row');
+    const variants = [];
+    rows.forEach(row => {
+      const name = row.querySelector('.variant-name').value.trim();
+      const stockVal = row.querySelector('.variant-stock').value;
+      const imgSelect = row.querySelector('.variant-image');
+      if (!name) return;
+      const stock = Number(stockVal || 0);
+      variants.push({
+        name,
+        stock: isNaN(stock) ? 0 : stock,
+        imageUrl: imgSelect && imgSelect.value ? imgSelect.value : null
+      });
+    });
+    return variants;
+  }
+
+  // 把款式塞回表單（編輯商品時用）
+  function setVariantsInForm(variants) {
+    variantsContainer.innerHTML = '';
+    (variants || []).forEach(v => addVariantRow(v));
+    updateVariantImageOptions();
+  }
+
+  addVariantBtn.addEventListener('click', () => addVariantRow());
+
+  // 渲染詳細圖片預覽 + 更新款式圖片選項
+  function renderDetailImages() {
+    productDetailImagesPreview.innerHTML = '';
+    currentDetailImages.forEach((url, index) => {
+      const wrap = document.createElement('div');
+      wrap.style.position = 'relative';
+
+      const img = document.createElement('img');
+      img.src = url;
+      img.className = 'product-img-preview';
+      img.style.width = '70px';
+      img.style.height = '70px';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-small';
+      btn.textContent = '×';
+      btn.style.position = 'absolute';
+      btn.style.top = '-6px';
+      btn.style.right = '-6px';
+      btn.style.fontSize = '10px';
+      btn.addEventListener('click', () => {
+        currentDetailImages.splice(index, 1);
+        renderDetailImages();
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(btn);
+      productDetailImagesPreview.appendChild(wrap);
+    });
+
+    updateVariantImageOptions();
+  }
+
+  // 上傳詳細圖片到 Supabase
+  productDetailImagesUploadBtn.addEventListener('click', async () => {
+    const files = productDetailImagesInput.files;
+    if (!files || files.length === 0) {
+      productDetailImagesStatus.textContent = '請先選擇要上傳的圖片';
+      return;
+    }
+
+    productDetailImagesStatus.textContent = '上傳中…';
+
+    try {
+      const promises = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split('.').pop();
+        const fileName =
+          Date.now().toString() +
+          '-' +
+          Math.random().toString(36).slice(2, 8) +
+          '-' + i +
+          '.' + ext;
+        const filePath = 'detail/' + fileName;
+
+        const p = supabase
+          .storage
+          .from(IMAGE_BUCKET)
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            const { data: publicData } = supabase
+              .storage
+              .from(IMAGE_BUCKET)
+              .getPublicUrl(filePath);
+            currentDetailImages.push(publicData.publicUrl);
+          });
+
+        promises.push(p);
+      }
+
+      await Promise.all(promises);
+      productDetailImagesStatus.textContent = '上傳成功！';
+      productDetailImagesInput.value = '';
+      renderDetailImages();
+    } catch (err) {
+      console.error(err);
+      productDetailImagesStatus.textContent = '上傳失敗：' + err.message;
+    }
+  });
+
+  // === 商品：載入 / 渲染 ===
+  async function loadProducts() {
+    productsTableBody.innerHTML = '';
+    productsEmpty.style.display = 'none';
+    productsTableWrapper.style.display = 'none';
+    productTotalCountEl.textContent = '0';
+
+    try {
+      const data = await apiGet('/api/admin/products');
+      const products = data.products || data.data || [];
+      allProducts = Array.isArray(products) ? products : [];
+      updateProductCodeSelect();
+      renderProducts();
+    } catch (err) {
+      console.error(err);
+      productsEmpty.style.display = 'block';
+      productsEmpty.textContent =
+        '載入商品失敗：' + err.message +
+        '，請確認 /api/admin/products 是否有實作。';
+    }
+  }
+
+  productRefreshBtn.addEventListener('click', loadProducts);
+  productStatusFilter.addEventListener('change', renderProducts);
+  productSearchInput.addEventListener('input', renderProducts);
+
+  productCodeSelect.addEventListener('change', () => {
+    const id = productCodeSelect.value;
+    if (!id) return;
+    const p = allProducts.find(x => String(x.id) === String(id));
+    if (p) fillProductForm(p);
+  });
+
+  productCodeSearchBtn.addEventListener('click', () => {
+    const code = productCodeSearchInput.value.trim();
+    if (!code) {
+      productFormStatus.textContent = '請先輸入商品編號';
+      return;
+    }
+    const p = allProducts.find(x => (x.code || '') === code);
+    if (!p) {
+      productFormStatus.textContent = '找不到該商品編號';
+      return;
+    }
+    fillProductForm(p);
+  });
+
+  function renderProducts() {
+    productsTableBody.innerHTML = '';
+
+    if (!Array.isArray(allProducts) || allProducts.length === 0) {
+      productsEmpty.style.display = 'block';
+      productsTableWrapper.style.display = 'none';
+      productTotalCountEl.textContent = '0';
+      return;
+    }
+
+    let filtered = allProducts.slice();
+
+    const statusVal = productStatusFilter.value;
+    if (statusVal !== 'all') {
+      filtered = filtered.filter(p => (p.status || 'on') === statusVal);
+    }
+
+    const keyword = productSearchInput.value.trim().toLowerCase();
+    if (keyword) {
+      filtered = filtered.filter(p => {
+        const fields = [
+          p.name || '',
+          p.category || '',
+          p.code || ''
+        ].join(' ').toLowerCase();
+        return fields.includes(keyword);
+      });
+    }
+
+    productTotalCountEl.textContent = allProducts.length.toString();
+
+    if (filtered.length === 0) {
+      productsEmpty.style.display = 'block';
+      productsTableWrapper.style.display = 'none';
+      return;
+    }
+
+    productsEmpty.style.display = 'none';
+    productsTableWrapper.style.display = 'block';
+
+    filtered.forEach(p => {
+      const tr = document.createElement('tr');
+
+      const price = typeof p.price === 'number' ? p.price : Number(p.price || 0);
+      const stock = typeof p.stock === 'number' ? p.stock : Number(p.stock || 0);
+      const imgUrl = p.imageUrl || '';
+      const variants = Array.isArray(p.variants) ? p.variants : [];
+      const statusVal2 = p.status || 'on';
+
+      const statusClass = statusVal2 === 'on' ? 'product-status-on' : 'product-status-off';
+      const statusText = statusVal2 === 'on' ? '上架中' : '已下架';
+
+      tr.innerHTML = `
+        <td>
+          ${
+            imgUrl
+              ? `<img src="${escapeHtml(imgUrl)}" class="product-img-preview" referrerpolicy="no-referrer">`
+              : '<span style="font-size:11px;color:#b8a27f;">(無圖片)</span>'
+          }
+        </td>
+        <td>${escapeHtml(p.code || '')}</td>
+        <td>
+          <div style="font-weight:600;color:#4f3b2a;">${escapeHtml(p.name || '')}</div>
+          <div style="font-size:12px;color:#9a7641;margin-top:2px;">
+            分類：${escapeHtml(p.category || '未分類')}
+          </div>
+        </td>
+        <td>NT$ ${price}</td>
+        <td>${stock}</td>
+        <td><span class="${statusClass}">${statusText}</span></td>
+        <td>${variants.length} 款</td>
+        <td>
+          <button class="btn-small" data-action="edit">編輯</button>
+          <button class="btn-small" data-action="toggle-status">
+            ${statusVal2 === 'on' ? '下架' : '上架'}
+          </button>
+          <button class="btn-small" data-action="delete">刪除</button>
+        </td>
+      `;
+
+      const btnEdit = tr.querySelector('[data-action="edit"]');
+      const btnToggle = tr.querySelector('[data-action="toggle-status"]');
+      const btnDelete = tr.querySelector('[data-action="delete"]');
+
+      btnEdit.addEventListener('click', () => fillProductForm(p));
+      btnToggle.addEventListener('click', () => toggleProductStatus(p));
+      btnDelete.addEventListener('click', () => deleteProduct(p));
+
+      productsTableBody.appendChild(tr);
+    });
+  }
+
+  function fillProductForm(p) {
+    editingProductId = p.id;
+    productCodeInput.value = p.code || '';
+    productNameInput.value = p.name || '';
+    productPriceInput.value = p.price != null ? p.price : '';
+    productStockInput.value = p.stock != null ? p.stock : '';
+    productCategoryInput.value = p.category || '';
+    productStatusInput.value = p.status || 'on';
+    productImageUrlInput.value = p.imageUrl || '';
+    productDescriptionInput.value = p.description || '';
+
+    setVariantsInForm(p.variants || []);
+    currentDetailImages = Array.isArray(p.detailImages) ? p.detailImages.slice() : [];
+    renderDetailImages();
+
+    productFormStatus.textContent = '目前正在編輯商品：' + (p.name || '');
+    productFormSubmitBtn.textContent = '儲存修改';
+  }
+
+  function resetProductForm() {
+    editingProductId = null;
+    productForm.reset();
+    productStatusInput.value = 'on';
+    variantsContainer.innerHTML = '';
+    currentDetailImages = [];
+    renderDetailImages();
+    productFormStatus.textContent = '目前狀態：新增新商品';
+    productFormSubmitBtn.textContent = '新增商品';
+  }
+
+  productFormResetBtn.addEventListener('click', resetProductForm);
+
+  productForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
     const payload = {
-      price: product.price,
-      priceNote: product.priceNote || '',
-      stocks
+      code: productCodeInput.value.trim(),
+      name: productNameInput.value.trim(),
+      price: Number(productPriceInput.value || 0),
+      stock: Number(productStockInput.value || 0),
+      category: productCategoryInput.value.trim(),
+      status: productStatusInput.value,
+      imageUrl: productImageUrlInput.value.trim(),
+      description: productDescriptionInput.value.trim(),
+      variants: getVariantsFromForm(),
+      detailImages: currentDetailImages
     };
 
-    const res = await fetch(`${API_BASE}/api/product-state/${encodeURIComponent(product.id)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error('saveProductStateToServer error: ' + res.status + ' ' + text);
+    if (!payload.name) {
+      productFormStatus.textContent = '請輸入商品名稱。';
+      return;
     }
-  }
+    if (isNaN(payload.price)) payload.price = 0;
+    if (isNaN(payload.stock)) payload.stock = 0;
 
-  // 從後端抓全部訂單（會更新 cachedOrders）
-  async function reloadOrdersFromServer() {
-    const res = await fetch(`${API_BASE}/api/orders`);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    cachedOrders = await res.json();
-  }
+    try {
+      productFormStatus.textContent = '送出中…';
 
-  // 後端修改訂單狀態
-  async function updateOrderStatusOnServer(orderId, newStatus) {
-    const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderId)}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error('updateOrderStatusOnServer error: ' + res.status + ' ' + text);
-    }
-  }
-
-  // 按月份統計（用 cachedOrders 來算）
-  function calcMonthlyStats(orders, year, month) {
-    const result = {
-      year,
-      month,
-      orderCount: 0,
-      completedCount: 0,
-      totalAmount: 0,
-      products: {} // { productId: { name, qty, amount } }
-    };
-
-    orders.forEach(o => {
-      if (!o.createdAt) return;
-      const t = new Date(o.createdAt);
-      const oy = t.getFullYear();
-      const om = t.getMonth() + 1;
-      if (oy !== year || om !== month) return;
-
-      result.orderCount += 1;
-      if (o.status === 'completed') result.completedCount += 1;
-      result.totalAmount += o.totalAmount || 0;
-
-      (o.items || []).forEach(item => {
-        const pid = item.productId;
-        if (!result.products[pid]) {
-          result.products[pid] = {
-            name: item.name,
-            qty: 0,
-            amount: 0
-          };
-        }
-        result.products[pid].qty += item.qty;
-        result.products[pid].amount += (item.price || 0) * item.qty;
-      });
-    });
-
-    return result;
-  }
-
-  // ============ 後台登入 ============
-
-  const ADMIN_PASSWORD = 'demo123';
-
-  const loginCard = document.getElementById('loginCard');
-  const adminPanel = document.getElementById('adminPanel');
-  const adminPasswordInput = document.getElementById('adminPassword');
-  const adminLoginBtn = document.getElementById('adminLoginBtn');
-  const adminLoginMsg = document.getElementById('adminLoginMsg');
-
-  if (adminLoginBtn) {
-    adminLoginBtn.addEventListener('click', () => {
-      const pwd = (adminPasswordInput.value || '').trim();
-      if (pwd === ADMIN_PASSWORD) {
-        loginCard.style.display = 'none';
-        adminPanel.style.display = 'block';
-        adminLoginMsg.textContent = '';
-        initAdmin(); // 登入後啟動後台
+      if (editingProductId) {
+        await apiPatch('/api/admin/products/' + encodeURIComponent(editingProductId), payload);
+        productFormStatus.textContent = '商品已更新。';
       } else {
-        adminLoginMsg.textContent = '密碼錯誤，請再試一次。';
-      }
-    });
-  }
-
-  // 也可以按 Enter 登入
-  if (adminPasswordInput) {
-    adminPasswordInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') adminLoginBtn.click();
-    });
-  }
-
-  // ============ 後台初始化：載入資料、渲染畫面 ============
-
-  const adminProductsDiv = document.getElementById('adminProducts');
-  const adminOrdersDiv = document.getElementById('adminOrders');
-  const adminMonthInput = document.getElementById('adminMonth');
-  const adminStatsDiv = document.getElementById('adminStats');
-  const btnRefreshOrders = document.getElementById('btnRefreshOrders');
-  const btnRefreshStats = document.getElementById('adminRefreshStats');
-
-  const summaryOrderCount = document.getElementById('summaryOrderCount');
-  const summaryCompletedCount = document.getElementById('summaryCompletedCount');
-  const summaryTotalAmount = document.getElementById('summaryTotalAmount');
-
-  async function initAdmin() {
-    // 1. 從後端載入商品狀態（價格 / 庫存）
-    await loadProductsStateFromServer();
-    // 2. 渲染商品管理畫面
-    renderAdminProducts();
-    // 3. 先抓一次訂單 + 渲染訂單列表
-    await reloadOrdersFromServer();
-    renderAdminOrders();
-    // 4. 設定月份 + 渲染統計 & 總覽
-    initAdminMonth();
-    renderAdminSummary();
-  }
-
-  // ============ 商品管理：渲染列表 ============
-
-  function renderAdminProducts() {
-    if (!adminProductsDiv) return;
-
-    let html = '<table><thead><tr>' +
-      '<th>商品</th>' +
-      '<th style="width:120px;">價格（NT$）</th>' +
-      '<th>款式庫存（每個款式）</th>' +
-      '<th style="width:80px;">操作</th>' +
-      '</tr></thead><tbody>';
-
-    products.forEach(p => {
-      const priceVal = (typeof p.price === 'number' && p.price > 0) ? p.price : '';
-
-      let specsHtml = '';
-      if (Array.isArray(p.specs)) {
-        specsHtml = p.specs.map(spec => {
-          const stockVal = (typeof spec.stock === 'number') ? spec.stock : '';
-          const dataKey = `${p.id}|${spec.key}`;
-          return `
-            <div style="margin-bottom:3px;">
-              <span>${spec.label}</span>
-              <input type="number"
-                     data-spec-stock="${dataKey}"
-                     value="${stockVal}"
-                     placeholder="不限"
-                     style="width:80px; margin-left:6px;">
-            </div>
-          `;
-        }).join('');
+        await apiPost('/api/admin/products', payload);
+        productFormStatus.textContent = '商品已新增。';
       }
 
-      html += `
-        <tr>
-          <td>${p.name}</td>
-          <td class="text-center">
-            <input type="number"
-                   data-admin-price="${p.id}"
-                   value="${priceVal}"
-                   placeholder="未設定"
-                   style="width:100px;">
-          </td>
-          <td>${specsHtml || '<span class="muted">此商品尚未設定款式</span>'}</td>
-          <td class="text-center">
-            <button type="button"
-                    class="btn-secondary"
-                    style="padding:3px 10px; font-size:11px;"
-                    onclick="window.adminSaveProduct('${p.id}')">
-              儲存
-            </button>
-          </td>
-        </tr>
-      `;
-    });
-
-    html += '</tbody></table>';
-    adminProductsDiv.innerHTML = html;
-  }
-
-  window.adminSaveProduct = async function(productId) {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-
-    const priceInput = document.querySelector(`input[data-admin-price="${productId}"]`);
-    if (!priceInput) return;
-
-    const newPrice = Number(priceInput.value);
-    if (Number.isNaN(newPrice) || newPrice <= 0) {
-      alert('價格必須是大於 0 的數字');
-      return;
+      await loadProducts();
+      resetProductForm();
+    } catch (err) {
+      console.error(err);
+      productFormStatus.textContent = '送出失敗：' + err.message;
     }
-    product.price = newPrice;
+  });
 
-    if (Array.isArray(product.specs)) {
-      product.specs.forEach(spec => {
-        const key = `${productId}|${spec.key}`;
-        const stockInput = document.querySelector(`input[data-spec-stock="${key}"]`);
-        if (!stockInput) return;
-        const v = stockInput.value;
-        if (v === '') {
-          spec.stock = undefined; // 不限量
-        } else {
-          const num = Number(v);
-          if (Number.isNaN(num) || num < 0) {
-            spec.stock = 0;
-            stockInput.value = 0;
-          } else {
-            spec.stock = num;
-          }
-        }
-      });
-    }
+  async function toggleProductStatus(p) {
+    const newStatus = (p.status || 'on') === 'on' ? 'off' : 'on';
+    const label = newStatus === 'on' ? '上架' : '下架';
+    const ok = confirm(`確定要將商品「${p.name || ''}」${label}嗎？`);
+    if (!ok) return;
 
     try {
-      await saveProductStateToServer(product);
-      alert(`「${product.name}」已更新價格與庫存（已寫入後端資料庫）。`);
-    } catch (e) {
-      console.error(e);
-      alert('儲存到後端失敗，請確認伺服器是否正常運作。');
+      await apiPatch('/api/admin/products/' + encodeURIComponent(p.id), { status: newStatus });
+      const target = allProducts.find(x => x.id === p.id);
+      if (target) target.status = newStatus;
+      renderProducts();
+      alert('商品已' + label + '。');
+    } catch (err) {
+      console.error(err);
+      alert('更新失敗：' + err.message);
     }
-  };
+  }
 
-  // ============ 訂單管理：渲染列表 ============
-
-  async function renderAdminOrders() {
-    if (!adminOrdersDiv) return;
+  async function deleteProduct(p) {
+    const ok = confirm(`確定要刪除商品「${p.name || ''}」嗎？此動作無法復原。`);
+    if (!ok) return;
 
     try {
-      await reloadOrdersFromServer();
-    } catch (e) {
-      console.error('renderAdminOrders reload error', e);
-      adminOrdersDiv.innerHTML = '無法從後端載入訂單，請確認伺服器是否正常運作。';
-      renderAdminSummary();
-      return;
+      await apiDelete('/api/admin/products/' + encodeURIComponent(p.id));
+      allProducts = allProducts.filter(x => x.id !== p.id);
+      renderProducts();
+      alert('商品已刪除。');
+    } catch (err) {
+      console.error(err);
+      alert('刪除失敗：' + err.message);
     }
-
-    const orders = cachedOrders;
-
-    if (!orders.length) {
-      adminOrdersDiv.innerHTML = '目前沒有訂單。';
-      renderAdminSummary();
-      return;
-    }
-
-    let html = '<table><thead><tr>' +
-      '<th>訂單編號</th>' +
-      '<th>時間</th>' +
-      '<th>狀態</th>' +
-      '<th class="text-right">金額</th>' +
-      '<th>客戶</th>' +
-      '<th>明細</th>' +
-      '</tr></thead><tbody>';
-
-    orders
-      .slice()
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .forEach(o => {
-        const created = o.createdAt ? new Date(o.createdAt) : null;
-        const statusPill = o.status === 'completed'
-          ? '<span class="pill pill-completed">已完結</span>'
-          : '<span class="pill pill-pending">處理中</span>';
-
-        const itemsHtml = (o.items || []).map(it =>
-          `${it.name}（${it.specLabel}）×${it.qty} － NT$${(it.price || 0) * it.qty}`
-        ).join('<br>');
-
-        const completedText = o.completedAt
-          ? '完結時間：' + new Date(o.completedAt).toLocaleString() + '<br>'
-          : '';
-
-        html += `
-          <tr>
-            <td>${o.id || ''}</td>
-            <td>${created ? created.toLocaleString() : ''}</td>
-            <td>
-              ${statusPill}<br>
-              <select style="margin-top:4px; font-size:11px;"
-                      onchange="window.adminChangeOrderStatus('${o.id}', this.value)">
-                <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>處理中</option>
-                <option value="completed" ${o.status === 'completed' ? 'selected' : ''}>已完結</option>
-              </select>
-            </td>
-            <td class="text-right">NT$ ${o.totalAmount || 0}</td>
-            <td>
-              ${o.customer?.name || ''}<br>
-              <span class="muted">${o.customer?.phone || ''}</span>
-            </td>
-            <td>
-              <details>
-                <summary>查看</summary>
-                <div class="mt-8">
-                  ${completedText}
-                  配送：${o.customer?.ship || ''}<br>
-                  付款：${o.customer?.pay || ''}<br>
-                  ${o.customer?.address ? ('地址：' + o.customer.address + '<br>') : ''}
-                  ${o.customer?.note ? ('備註：' + o.customer.note + '<br>') : ''}
-                  <br><strong>品項：</strong><br>
-                  ${itemsHtml}
-                </div>
-              </details>
-            </td>
-          </tr>
-        `;
-      });
-
-    html += '</tbody></table>';
-    adminOrdersDiv.innerHTML = html;
-    renderAdminSummary();
   }
 
-  window.adminChangeOrderStatus = async function(orderId, newStatus) {
+  // === 圖片上傳測試區 ===
+	uploadFileBtn.addEventListener('click', async () => {
+	console.log('IMAGE_BUCKET =', IMAGE_BUCKET);  // 加這行
+	const file = uploadFileInput.files[0];
+    if (!file) {
+      uploadStatus.textContent = '請先選一張圖片。';
+      return;
+    }
+
+    uploadStatus.textContent = '上傳中…';
+    uploadResult.style.display = 'none';
+
     try {
-      await updateOrderStatusOnServer(orderId, newStatus);
-      await reloadOrdersFromServer();
-      renderAdminOrders();
-    } catch (e) {
-      console.error(e);
-      alert('更新訂單狀態失敗，請確認 server.js 是否有在執行。');
+      const ext = file.name.split('.').pop();
+      const fileName =
+        Date.now().toString() +
+        '-' +
+        Math.random().toString(36).slice(2, 8) +
+        '.' + ext;
+      const filePath = 'test/' + fileName;
+
+      const { data, error } = await supabase
+        .storage
+        .from(IMAGE_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      const { data: publicData } = supabase
+        .storage
+        .from(IMAGE_BUCKET)
+        .getPublicUrl(filePath);
+
+      const publicUrl = publicData.publicUrl;
+
+      uploadStatus.textContent = '上傳成功！';
+      uploadResult.style.display = 'block';
+      uploadUrl.href = publicUrl;
+      uploadUrl.textContent = publicUrl;
+
+      // 方便：順便塞到主圖欄位
+      productImageUrlInput.value = publicUrl;
+    } catch (err) {
+      console.error(err);
+      uploadStatus.textContent = '上傳失敗：' + err.message;
+      uploadResult.style.display = 'none';
     }
-  };
-
-  if (btnRefreshOrders) {
-    btnRefreshOrders.addEventListener('click', () => {
-      renderAdminOrders();
-    });
-  }
-
-  // ============ 每月銷量統計 ============
-
-  function initAdminMonth() {
-    if (!adminMonthInput) return;
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = (now.getMonth() + 1).toString().padStart(2, '0');
-    adminMonthInput.value = `${y}-${m}`;
-    renderAdminStats();
-  }
-
-  function renderAdminStats() {
-    if (!adminStatsDiv || !adminMonthInput) return;
-    const val = adminMonthInput.value;
-    if (!val) {
-      adminStatsDiv.textContent = '請先選擇月份。';
-      return;
-    }
-    const [y, m] = val.split('-');
-    const year = Number(y);
-    const month = Number(m);
-    if (!year || !month) {
-      adminStatsDiv.textContent = '月份格式錯誤。';
-      return;
-    }
-
-    const orders = cachedOrders || [];
-    const stats = calcMonthlyStats(orders, year, month);
-
-    let html = '';
-    html += `📆 統計月份：${year} 年 ${month} 月<br>`;
-    html += `📦 訂單數：${stats.orderCount} 筆（已完結 ${stats.completedCount} 筆）<br>`;
-    html += `💰 總金額：NT$ ${stats.totalAmount}<br>`;
-
-    const keys = Object.keys(stats.products);
-    if (!keys.length) {
-      html += '<br>本月尚無商品銷售紀錄。';
-    } else {
-      html += '<br><strong>商品銷量：</strong><br>';
-      html += '<ul style="padding-left:20px; margin-top:4px;">';
-      keys.forEach(pid => {
-        const p = stats.products[pid];
-        html += `<li>${p.name}：${p.qty} 件，NT$ ${p.amount}</li>`;
-      });
-      html += '</ul>';
-    }
-
-    adminStatsDiv.innerHTML = html;
-  }
-
-  if (btnRefreshStats) {
-    btnRefreshStats.addEventListener('click', renderAdminStats);
-  }
-
-  // ============ 總覽數字（上方三個小卡） ============
-
-  function renderAdminSummary() {
-    const orders = cachedOrders || [];
-    const count = orders.length;
-    const completed = orders.filter(o => o.status === 'completed').length;
-    const totalAmount = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-
-    if (summaryOrderCount) summaryOrderCount.textContent = count;
-    if (summaryCompletedCount) summaryCompletedCount.textContent = completed;
-    if (summaryTotalAmount) summaryTotalAmount.textContent = 'NT$ ' + totalAmount;
-  }
+  });
 </script>
 </body>
 </html>

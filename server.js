@@ -1,336 +1,641 @@
 // server.js
-// 簡單版後端：Express + SQLite（better-sqlite3）
-
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
+const crypto = require('crypto');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+// ===== 資料庫設定：SQLite（商品用） =====
+const db = new sqlite3.Database(path.join(__dirname, 'sanxiaozi.db'));
 
-// 開 SQLite 資料庫檔案（不存在會自動建立）
-const dbFile = path.join(__dirname, 'shop.db');
-const db = new Database(dbFile);
-
-// 啟用外鍵、基本設定 & 建表
-function initDb() {
-  db.pragma('foreign_keys = ON');
-  db.pragma('journal_mode = WAL');
-
-  const sql = `
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,             -- 訂單編號，例如 ND202512100001
-      created_at TEXT NOT NULL,        -- ISO 時間字串
-      completed_at TEXT,               -- 完結時間（可為 NULL）
-      status TEXT NOT NULL,            -- pending / completed
-      customer_name TEXT,
-      phone TEXT,
-      email TEXT,
-      line_id TEXT,
-      address TEXT,
-      ship TEXT,
-      pay TEXT,
-      note TEXT,
-      total_amount INTEGER NOT NULL    -- 整數金額（NT$）
-    );
-
-    CREATE TABLE IF NOT EXISTS order_items (
+db.serialize(() => {
+  // 商品表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      spec_key TEXT,
-      spec_label TEXT,
-      name TEXT,
-      price INTEGER NOT NULL,
-      qty INTEGER NOT NULL,
-      FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
-    );
+      code TEXT,
+      name TEXT NOT NULL,
+      price INTEGER DEFAULT 0,
+      stock INTEGER DEFAULT 0,
+      category TEXT,
+      status TEXT DEFAULT 'on',
+      imageUrl TEXT,
+      description TEXT,
+      variantsJson TEXT,
+      detailImagesJson TEXT
+    )
+  `);
 
-    -- 儲存每個商品的價格 & 各款式庫存（JSON）
-    CREATE TABLE IF NOT EXISTS product_state (
-      product_id TEXT PRIMARY KEY,
-      price INTEGER NOT NULL,
-      price_note TEXT,
-      stocks_json TEXT                 -- JSON：{ "usagi": 10, "kuri": 5, ... }
-    );
-  `;
+  // 訂單表（目前保留未使用，之後若要改成用 SQLite 存訂單可以用）
+  db.run(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status TEXT DEFAULT 'new',
+      createdAt TEXT,
+      totalAmount INTEGER DEFAULT 0,
+      customerJson TEXT,
+      itemsJson TEXT
+    )
+  `);
+});
 
-  db.exec(sql);
-}
+// ===== 基本中介層設定 =====
+app.use(cors());
+app.use(express.json());
 
-initDb();
-
-// 中介層
-app.use(cors());           // 開放 CORS，方便你從 file:// 或別的網域呼叫
-app.use(express.json());   // 解析 JSON body
+// 靜態檔案：public 資料夾
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 簡單健康檢查（可選）
-app.get('/api/ping', (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
-});
+// ===== 訂單 JSON 檔案（後台列表 / 狀態用） =====
+const DATA_FILE = path.join(__dirname, 'orders.json');
 
-// ====== 工具：產生訂單編號 ======
-function generateOrderId() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const prefix = `ND${y}${m}${d}`;
+// 後台登入密碼
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'a1216321';
 
-  // 找出今天最後一筆訂單，編號加一
-  const row = db
-    .prepare('SELECT id FROM orders WHERE id LIKE ? ORDER BY id DESC LIMIT 1')
-    .get(prefix + '%');
-
-  let index = 1;
-  if (row && row.id) {
-    const last = row.id;
-    const numStr = last.slice(prefix.length); // 取最後四位
-    const num = parseInt(numStr, 10);
-    if (!isNaN(num)) index = num + 1;
+// ----- orders.json 讀寫 -----
+function readOrders() {
+  try {
+    const text = fs.readFileSync(DATA_FILE, 'utf8');
+    const data = JSON.parse(text);
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      // 檔案不存在 → 視為空陣列
+      return [];
+    }
+    console.error('readOrders error:', err);
+    return [];
   }
-
-  return prefix + String(index).padStart(4, '0');
 }
 
-// ====== API：取得所有訂單（含品項） ======
-app.get('/api/orders', (req, res) => {
+function saveOrders(orders) {
   try {
-    const orders = db.prepare('SELECT * FROM orders').all();
-    const items = db.prepare('SELECT * FROM order_items').all();
-
-    const itemsByOrder = {};
-    items.forEach(it => {
-      if (!itemsByOrder[it.order_id]) itemsByOrder[it.order_id] = [];
-      itemsByOrder[it.order_id].push({
-        productId: it.product_id,
-        specKey: it.spec_key,
-        specLabel: it.spec_label,
-        name: it.name,
-        price: it.price,
-        qty: it.qty
-      });
-    });
-
-    const result = orders.map(o => ({
-      id: o.id,
-      createdAt: o.created_at,
-      completedAt: o.completed_at,
-      status: o.status,
-      totalAmount: o.total_amount,
-      customer: {
-        name: o.customer_name,
-        phone: o.phone,
-        email: o.email,
-        lineId: o.line_id,
-        address: o.address,
-        ship: o.ship,
-        pay: o.pay,
-        note: o.note
-      },
-      items: itemsByOrder[o.id] || []
-    }));
-
-    res.json(result);
+    fs.writeFileSync(DATA_FILE, JSON.stringify(orders, null, 2), 'utf8');
   } catch (err) {
-    console.error('GET /api/orders error', err);
-    res.status(500).json({ error: 'Failed to get orders.' });
+    console.error('saveOrders error:', err);
   }
+}
+
+// 產生訂單編號：ND + YYYYMMDD + 四碼流水號
+function generateOrderId(allOrders) {
+  const now = new Date();
+  const y = now.getFullYear().toString();
+  const m = (now.getMonth() + 1).toString().padStart(2, '0');
+  const d = now.getDate().toString().padStart(2, '0');
+  const datePrefix = `${y}${m}${d}`;
+
+  const todayOrders = allOrders.filter(o =>
+    (o.id || '').startsWith('ND' + datePrefix)
+  );
+  const nextIndex = todayOrders.length + 1;
+  const indexStr = nextIndex.toString().padStart(4, '0');
+  return `ND${datePrefix}${indexStr}`;
+}
+
+// ===== 後台登入：簡易 Token 機制 =====
+const adminTokens = new Set();
+
+function createAdminToken() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
+function authAdmin(req, res, next) {
+  const token = req.headers['x-admin-token'];
+  if (!token || !adminTokens.has(token)) {
+    return res.status(401).json({ ok: false, message: '未登入或權限不足' });
+  }
+  next();
+}
+
+// 後台登入
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body || {};
+  if (!password) {
+    return res.status(400).json({ ok: false, message: '請輸入密碼' });
+  }
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ ok: false, message: '密碼錯誤' });
+  }
+
+  const token = createAdminToken();
+  adminTokens.add(token);
+  res.json({ ok: true, token });
 });
 
-// ====== API：新增訂單（前台結帳會呼叫） ======
-app.post('/api/orders', (req, res) => {
-  try {
-    const { items, customer } = req.body || {};
+// 後台登出
+app.post('/api/admin/logout', authAdmin, (req, res) => {
+  const token = req.headers['x-admin-token'];
+  if (token) adminTokens.delete(token);
+  res.json({ ok: true });
+});
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'items 必須是非空陣列' });
-    }
-    if (!customer || !customer.name || !customer.phone || !customer.email) {
-      return res.status(400).json({ error: 'customer 資料不完整（姓名 / 電話 / Email 必填）' });
-    }
-
-    let totalAmount = 0;
-    items.forEach(it => {
-      const price = Number(it.price) || 0;
-      const qty = Number(it.qty) || 0;
-      totalAmount += price * qty;
-    });
-
-    const id = generateOrderId();
-    const nowIso = new Date().toISOString();
-
-    const insertOrder = db.prepare(`
-      INSERT INTO orders (
-        id, created_at, completed_at, status,
-        customer_name, phone, email, line_id,
-        address, ship, pay, note, total_amount
-      ) VALUES (
-        @id, @created_at, NULL, 'pending',
-        @customer_name, @phone, @email, @line_id,
-        @address, @ship, @pay, @note, @total_amount
-      )
-    `);
-
-    const insertItem = db.prepare(`
-      INSERT INTO order_items (
-        order_id, product_id, spec_key, spec_label, name, price, qty
-      ) VALUES (
-        @order_id, @product_id, @spec_key, @spec_label, @name, @price, @qty
-      )
-    `);
-
-    const tx = db.transaction(() => {
-      insertOrder.run({
-        id,
-        created_at: nowIso,
-        customer_name: customer.name,
-        phone: customer.phone,
-        email: customer.email,
-        line_id: customer.lineId || '',
-        address: customer.address || '',
-        ship: customer.ship || '',
-        pay: customer.pay || '',
-        note: customer.note || '',
-        total_amount: totalAmount
-      });
-
-      items.forEach(it => {
-        insertItem.run({
-          order_id: id,
-          product_id: it.productId,
-          spec_key: it.specKey || '',
-          spec_label: it.specLabel || '',
-          name: it.name || '',
-          price: Number(it.price) || 0,
-          qty: Number(it.qty) || 0
-        });
-      });
-    });
-
-    tx();
-
-    res.status(201).json({
+// ====================================================================
+// 前台：商品列表（只顯示上架中的商品）
+// ====================================================================
+app.get('/api/products', (req, res) => {
+  const sql = `
+    SELECT
       id,
-      createdAt: nowIso,
-      status: 'pending',
-      totalAmount
-    });
-  } catch (err) {
-    console.error('POST /api/orders error', err);
-    res.status(500).json({ error: 'Failed to create order.' });
-  }
-});
-
-// ====== API：變更訂單狀態（後台改「已完結」用） ======
-app.patch('/api/orders/:id/status', (req, res) => {
-  try {
-    const orderId = req.params.id;
-    const { status } = req.body || {};
-    if (!['pending', 'completed'].includes(status)) {
-      return res.status(400).json({ error: 'status 必須是 pending 或 completed' });
-    }
-
-    const nowIso = new Date().toISOString();
-    const stmt = db.prepare(`
-      UPDATE orders
-      SET status = @status,
-          completed_at = CASE WHEN @status = 'completed' THEN @completed_at ELSE NULL END
-      WHERE id = @id
-    `);
-
-    const info = stmt.run({
-      id: orderId,
+      code,
+      name,
+      price,
+      stock,
+      category,
       status,
-      completed_at: nowIso
-    });
+      imageUrl,
+      description,
+      variantsJson,
+      detailImagesJson
+    FROM products
+    WHERE status = 'on'
+    ORDER BY id DESC
+  `;
 
-    if (info.changes === 0) {
-      return res.status(404).json({ error: '找不到此訂單' });
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error('查詢 products 失敗', err);
+      return res.status(500).json({ success: false, message: '查詢商品失敗' });
     }
 
-    res.json({ id: orderId, status, completedAt: status === 'completed' ? nowIso : null });
-  } catch (err) {
-    console.error('PATCH /api/orders/:id/status error', err);
-    res.status(500).json({ error: 'Failed to update order status.' });
-  }
-});
-
-// ====== API：取得所有商品狀態（價格 + 每款庫存） ======
-app.get('/api/product-state', (req, res) => {
-  try {
-    const rows = db.prepare('SELECT * FROM product_state').all();
-    const result = {};
-    rows.forEach(r => {
-      let stocks = {};
-      if (r.stocks_json) {
-        try {
-          stocks = JSON.parse(r.stocks_json);
-        } catch (e) {
-          stocks = {};
-        }
+    const products = (rows || []).map(row => {
+      let variants = [];
+      try {
+        variants = row.variantsJson ? JSON.parse(row.variantsJson) : [];
+      } catch {
+        variants = [];
       }
-      result[r.product_id] = {
-        price: r.price,
-        priceNote: r.price_note || '',
-        stocks
+
+      let detailImages = [];
+      try {
+        detailImages = row.detailImagesJson ? JSON.parse(row.detailImagesJson) : [];
+      } catch {
+        detailImages = [];
+      }
+
+      // 分類（後台 category 欄位可以填：cup desk gift 等）
+      const categories = row.category
+        ? row.category.split(/[,\s]+/).filter(Boolean)
+        : [];
+
+      // 商品層級的小圖（所有款式共用）
+      const commonThumbs = detailImages.length
+        ? detailImages
+        : (row.imageUrl ? [row.imageUrl] : []);
+
+      // 前台 specs：由 variants 轉換
+      let specs;
+      if (variants.length > 0) {
+        specs = variants.map((v, idx) => {
+          const vStock = Number(v.stock || 0) || 0;
+          const mainImg = v.imageUrl || row.imageUrl || '';
+          const thumbs = mainImg
+            ? [mainImg, ...commonThumbs.filter(u => u !== mainImg)]
+            : commonThumbs;
+
+          return {
+            key: v.name || `v${idx + 1}`,        // key 用 name
+            label: v.name || `款式 ${idx + 1}`,
+            stock: vStock,
+            mainImg,
+            thumbs
+          };
+        });
+      } else {
+        // 沒設定款式時給一個預設款
+        specs = [{
+          key: 'default',
+          label: '預設款',
+          stock: row.stock != null ? row.stock : null,
+          mainImg: row.imageUrl || '',
+          thumbs: commonThumbs
+        }];
+      }
+
+      return {
+        id: row.id,
+        code: row.code,
+        name: row.name,
+        price: row.price,
+        stock: row.stock,
+        categories,
+        tag: '',
+        subtitle: '',
+        priceNote: '',
+        shortDesc: row.description
+          ? row.description.slice(0, 40) + (row.description.length > 40 ? '…' : '')
+          : '',
+        imageUrl: row.imageUrl,
+        detailHtml: row.description || '',
+        specs
       };
     });
-    res.json(result);
-  } catch (err) {
-    console.error('GET /api/product-state error', err);
-    res.status(500).json({ error: 'Failed to get product state.' });
-  }
+
+    res.json({ success: true, products });
+  });
 });
 
-// ====== API：更新單一商品的價格 & 庫存（後台存檔用） ======
-app.post('/api/product-state/:productId', (req, res) => {
-  try {
-    const productId = req.params.productId;
-    const { price, priceNote, stocks } = req.body || {};
+// ====================================================================
+// 前台：建立訂單（檢查庫存 + 扣 SQLite 庫存 + 寫入 orders.json）
+// ====================================================================
+app.post('/api/orders', (req, res) => {
+  const { customer, items } = req.body || {};
 
-    const p = Number(price);
-    if (!p || p <= 0) {
-      return res.status(400).json({ error: 'price 必須是大於 0 的數字' });
+  if (!customer || !customer.name || !customer.phone || !customer.email) {
+    return res.status(400).json({ ok: false, message: '缺少必要的顧客資料' });
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ ok: false, message: '購物車是空的' });
+  }
+
+  // 計算總金額
+  const totalAmount = items.reduce((sum, it) => {
+    return sum + (Number(it.price || 0) * Number(it.qty || 0));
+  }, 0);
+
+  const allOrders = readOrders();
+  const id = generateOrderId(allOrders);
+  const now = new Date().toISOString();
+
+  const newOrder = {
+    id,
+    createdAt: now,
+    updatedAt: now,
+    status: 'pending',
+    totalAmount,
+    items,
+    customer
+  };
+
+  // 使用 SQLite transaction 確保庫存檢查 + 扣庫存是原子操作
+  db.serialize(() => {
+    db.run("BEGIN TRANSACTION");
+
+    let failed = false;
+    let failMessage = "";
+    const insufficient = [];
+
+    // 先檢查每一筆庫存
+    const processItem = (index) => {
+      if (index >= items.length) {
+        // 所有商品庫存 OK，開始扣庫存
+        return deductItem(0);
+      }
+
+      const it = items[index];
+      const pid = it.productId;
+      const specKey = it.specKey || null;
+      const qty = Number(it.qty || 0);
+
+      if (!pid || qty <= 0) {
+        return processItem(index + 1);
+      }
+
+      db.get(
+        "SELECT stock, variantsJson FROM products WHERE id = ?",
+        [pid],
+        (err, row) => {
+          if (err || !row) {
+            failed = true;
+            failMessage = "查詢商品失敗";
+            return db.run("ROLLBACK", () =>
+              res.status(500).json({ ok: false, message: failMessage })
+            );
+          }
+
+          let stock = Number(row.stock || 0);
+          let variants = [];
+          try {
+            variants = row.variantsJson ? JSON.parse(row.variantsJson) : [];
+          } catch {
+            variants = [];
+          }
+
+          if (specKey && variants.length > 0) {
+            const v = variants.find(v => v.name === specKey || v.key === specKey);
+            if (!v) {
+              failed = true;
+              failMessage = "找不到該款式";
+              return db.run("ROLLBACK", () =>
+                res.status(400).json({ ok: false, message: failMessage })
+              );
+            }
+            if (Number(v.stock) < qty) {
+              insufficient.push({
+                productId: pid,
+                specKey,
+                remain: Number(v.stock) || 0,
+                want: qty
+              });
+            }
+          } else {
+            if (stock < qty) {
+              insufficient.push({
+                productId: pid,
+                specKey: null,
+                remain: stock,
+                want: qty
+              });
+            }
+          }
+
+          if (insufficient.length > 0) {
+            failed = true;
+            failMessage = "部分商品庫存不足";
+            return db.run("ROLLBACK", () =>
+              res.status(400).json({ ok: false, message: failMessage, insufficient })
+            );
+          }
+
+          processItem(index + 1);
+        }
+      );
+    };
+
+    // 實際扣庫存
+    const deductItem = (idx) => {
+      if (idx >= items.length) {
+        // 扣庫存完成 → 寫入訂單 JSON → COMMIT
+        const updatedOrders = readOrders();
+        updatedOrders.push(newOrder);
+        saveOrders(updatedOrders);
+
+        return db.run("COMMIT", () => {
+          res.json({
+            ok: true,
+            id: newOrder.id,
+            createdAt: newOrder.createdAt,
+            status: newOrder.status,
+            totalAmount: newOrder.totalAmount
+          });
+        });
+      }
+
+      const it = items[idx];
+      const pid = it.productId;
+      const specKey = it.specKey || null;
+      const qty = Number(it.qty || 0);
+
+      if (!pid || qty <= 0) {
+        return deductItem(idx + 1);
+      }
+
+      db.get(
+        "SELECT stock, variantsJson FROM products WHERE id = ?",
+        [pid],
+        (err, row) => {
+          if (err || !row) {
+            failed = true;
+            const msg = "扣庫存時找不到商品";
+            return db.run("ROLLBACK", () =>
+              res.status(500).json({ ok: false, message: msg })
+            );
+          }
+
+          let stock = Number(row.stock || 0);
+          let variants = [];
+          try {
+            variants = row.variantsJson ? JSON.parse(row.variantsJson) : [];
+          } catch {
+            variants = [];
+          }
+
+          // 扣總庫存
+          stock = Math.max(0, stock - qty);
+
+          // 扣款式庫存
+          if (specKey && variants.length > 0) {
+            const v = variants.find(v => v.name === specKey || v.key === specKey);
+            if (v) {
+              let vStock = Number(v.stock || 0);
+              v.stock = Math.max(0, vStock - qty);
+            }
+          }
+
+          const newVariantsJson = JSON.stringify(variants);
+
+          db.run(
+            "UPDATE products SET stock = ?, variantsJson = ? WHERE id = ?",
+            [stock, newVariantsJson, pid],
+            (err2) => {
+              if (err2) {
+                failed = true;
+                const msg = "更新庫存失敗";
+                return db.run("ROLLBACK", () =>
+                  res.status(500).json({ ok: false, message: msg })
+                );
+              }
+              deductItem(idx + 1);
+            }
+          );
+        }
+      );
+    };
+
+    processItem(0);
+  });
+});
+
+// ====================================================================
+// 前台：訂單查詢（電話 + 訂單編號）
+// ====================================================================
+app.get('/api/orders/query', (req, res) => {
+  const phone = (req.query.phone || '').trim();
+  const id = (req.query.id || '').trim();
+
+  if (!phone || !id) {
+    return res.status(400).json({ message: '請提供 phone 與 id' });
+  }
+
+  const orders = readOrders();
+  const order = orders.find(
+    o =>
+      (o.id === id) &&
+      o.customer &&
+      (String(o.customer.phone || '').trim() === phone)
+  );
+
+  if (!order) {
+    return res.status(404).json({ message: '查無此訂單，請確認電話與訂單編號是否正確。' });
+  }
+
+  res.json({ ok: true, order });
+});
+
+// ====================================================================
+// 後台：商品管理（使用 SQLite，建議加 authAdmin）
+// ====================================================================
+app.get('/api/admin/products', authAdmin, (req, res) => {
+  db.all('SELECT * FROM products ORDER BY id DESC', [], (err, rows) => {
+    if (err) {
+      console.error('取得商品列表失敗', err);
+      return res.status(500).json({ success: false, message: '取得商品失敗' });
     }
 
-    let stocksJson = null;
-    if (stocks && typeof stocks === 'object') {
-      stocksJson = JSON.stringify(stocks);
-    }
+    const products = rows.map(row => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      price: row.price,
+      stock: row.stock,
+      category: row.category,
+      status: row.status,
+      imageUrl: row.imageUrl,
+      description: row.description,
+      variants: row.variantsJson ? JSON.parse(row.variantsJson) : [],
+      detailImages: row.detailImagesJson ? JSON.parse(row.detailImagesJson) : []
+    }));
 
-    const stmt = db.prepare(`
-      INSERT INTO product_state (product_id, price, price_note, stocks_json)
-      VALUES (@product_id, @price, @price_note, @stocks_json)
-      ON CONFLICT(product_id) DO UPDATE SET
-        price = excluded.price,
-        price_note = excluded.price_note,
-        stocks_json = excluded.stocks_json
-    `);
+    res.json({ success: true, products });
+  });
+});
 
-    stmt.run({
-      product_id: productId,
-      price: p,
-      price_note: priceNote || '',
-      stocks_json: stocksJson
-    });
+app.post('/api/admin/products', authAdmin, (req, res) => {
+  const {
+    code,
+    name,
+    price,
+    stock,
+    category,
+    status,
+    imageUrl,
+    description,
+    variants,
+    detailImages
+  } = req.body || {};
 
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/product-state/:productId error', err);
-    res.status(500).json({ error: 'Failed to update product state.' });
+  if (!name) {
+    return res.status(400).json({ success: false, message: '缺少商品名稱' });
   }
+
+  const priceVal = Number(price || 0);
+  const stockVal = Number(stock || 0);
+
+  const variantsJson = JSON.stringify(variants || []);
+  const detailImagesJson = JSON.stringify(detailImages || []);
+
+  const sql = `
+    INSERT INTO products
+    (code, name, price, stock, category, status, imageUrl, description, variantsJson, detailImagesJson)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const params = [
+    code || null,
+    name,
+    isNaN(priceVal) ? 0 : priceVal,
+    isNaN(stockVal) ? 0 : stockVal,
+    category || null,
+    status || 'on',
+    imageUrl || null,
+    description || null,
+    variantsJson,
+    detailImagesJson
+  ];
+
+  db.run(sql, params, function (err) {
+    if (err) {
+      console.error('新增商品失敗', err);
+      return res.status(500).json({ success: false, message: '新增商品失敗' });
+    }
+    res.json({ success: true, id: this.lastID });
+  });
 });
 
-// ================== 前端路由處理 ==================
-// 只要不是 /api/ 開頭，就回傳 index.html（讓前台 & 後台都用同一個 server）
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.patch('/api/admin/products/:id', authAdmin, (req, res) => {
+  const productId = req.params.id;
+  const {
+    code,
+    name,
+    price,
+    stock,
+    category,
+    status,
+    imageUrl,
+    description,
+    variants,
+    detailImages
+  } = req.body || {};
+
+  const priceVal = Number(price || 0);
+  const stockVal = Number(stock || 0);
+
+  const variantsJson = JSON.stringify(variants || []);
+  const detailImagesJson = JSON.stringify(detailImages || []);
+
+  const sql = `
+    UPDATE products
+    SET code = ?, name = ?, price = ?, stock = ?, category = ?, status = ?,
+        imageUrl = ?, description = ?, variantsJson = ?, detailImagesJson = ?
+    WHERE id = ?
+  `;
+  const params = [
+    code || null,
+    name || '',
+    isNaN(priceVal) ? 0 : priceVal,
+    isNaN(stockVal) ? 0 : stockVal,
+    category || null,
+    status || 'on',
+    imageUrl || null,
+    description || null,
+    variantsJson,
+    detailImagesJson,
+    productId
+  ];
+
+  db.run(sql, params, function (err) {
+    if (err) {
+      console.error('更新商品失敗', err);
+      return res.status(500).json({ success: false, message: '更新商品失敗' });
+    }
+    res.json({ success: true });
+  });
 });
-// ====== 啟動伺服器 ======
+
+app.delete('/api/admin/products/:id', authAdmin, (req, res) => {
+  const productId = req.params.id;
+
+  db.run('DELETE FROM products WHERE id = ?', [productId], function (err) {
+    if (err) {
+      console.error('刪除商品失敗', err);
+      return res.status(500).json({ success: false, message: '刪除商品失敗' });
+    }
+    res.json({ success: true });
+  });
+});
+
+// ====================================================================
+// 後台：訂單管理（使用 orders.json，token 保護）
+// ====================================================================
+app.get('/api/admin/orders', authAdmin, (req, res) => {
+  const orders = readOrders();
+  res.json({ ok: true, orders });
+});
+
+app.patch('/api/admin/orders/:id', authAdmin, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+
+  if (!status) {
+    return res.status(400).json({ ok: false, message: '缺少狀態欄位' });
+  }
+
+  const orders = readOrders();
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ ok: false, message: '找不到這筆訂單' });
+  }
+
+  orders[idx].status = status;
+  orders[idx].updatedAt = new Date().toISOString();
+  saveOrders(orders);
+
+  res.json({ ok: true, order: orders[idx] });
+});
+
+// ===== 啟動伺服器 =====
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log('Server running on port', PORT);
 });
