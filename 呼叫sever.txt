@@ -1,0 +1,7 @@
+node server.js
+
+
+
+http://localhost:3000/（前台）
+
+http://localhost:3000/admin.html（後台）

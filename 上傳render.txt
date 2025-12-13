@@ -1,0 +1,25 @@
+🟦 Step 3：檢查 Git 是否看到你的修改
+
+輸入：
+
+git status
+
+
+你會看到類似：
+
+modified:   public/index.html
+modified:   public/admin.html
+
+
+這代表你有修改，但還沒 commit。
+
+🟦 Step 4：加入所有修改到 Git
+
+輸入：
+
+git add package-lock.json package.json public/admin.html public/index.html server.js orders.json
+
+
+git commit -m "update deployment settings and frontend API_BASE"
+
+git push
