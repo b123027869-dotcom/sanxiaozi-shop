@@ -21,13 +21,13 @@
   0) Reset / Base
 ========================================================= */
 *{box-sizing:border-box;margin:0;padding:0}
-html{overflow-x:hidden;}
+html,body{overflow-x:hidden;}
+html{scroll-padding-top:140px;}
 body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;
   line-height:1.6;
   color:#3f3a4f;
   background:linear-gradient(180deg,#ffffff 0%,#fff6d3 30%,#e6f2ff 90%);
-  overflow-x:hidden;
 }
 a{text-decoration:none;color:inherit}
 
@@ -83,7 +83,7 @@ header{
 /* =========================================================
   3) Layout
 ========================================================= */
-main{max-width:1100px;margin:0 auto;padding:16px; overflow-x:clip;}
+main{max-width:1100px;margin:0 auto;padding:16px}
 
 /* =========================================================
   4) Hero
@@ -682,26 +682,21 @@ footer{
 ========================================================= */
 .search-strip{
   position:sticky;
-  top:72px; /* 讓搜尋永遠貼在導覽列下方 */
-  z-index:9;
+  top:72px;
+  z-index:50;
   max-width:1100px;
-  margin:14px auto 6px;
-  padding:10px 16px;
-  background:rgba(255,255,255,.92);
-  border:1px solid rgba(188,220,255,.7);
-  border-radius:18px;
-  backdrop-filter:blur(8px);
-  box-shadow:0 10px 24px rgba(118,165,228,.18);
+  margin:10px auto 10px;
+  padding:0 16px;
 }
-.search-strip .hero-search{width:100%; min-width:0;}
-.search-strip .hero-search input{min-width:0;}
+@media (max-width:520px){
+  .search-strip{ top:64px; }
+}
 
 /* =========================================================
   Mobile：輪播卡片更高、更好看
 ========================================================= */
 @media (max-width:520px){
-  .search-strip{ margin:10px auto 4px; top:64px; padding:10px 12px; }
-
+  .search-strip{ margin:10px auto 4px; }
   .hero-banner{ height: 560px; }           /* 原本 420，手機加高 */
   .hero-banner-media{ max-height: 320px; } /* 原本約 230，手機加高 */
 }
@@ -791,11 +786,14 @@ footer{
           </div>
         </aside>
       </div>
-</section>
     
     <!-- =========================================================
       搜尋（移到商品分類上方，手機更好用）
     ========================================================= -->
+    </div>
+
+</section>
+
     <div class="search-strip" aria-label="商品搜尋">
       <div class="hero-search">
           <span class="hero-search-icon">🔍</span>
@@ -805,7 +803,6 @@ footer{
             placeholder="想找什麼小物？例：帆布袋、馬克杯、桌上小物…"
           />
         </div>
-    </div>
 
 
 
@@ -2509,5 +2506,25 @@ document.addEventListener("DOMContentLoaded", () => {
       initPage();
     }
   </script>
+<script>
+/* fix: prevent search focus scroll jump on mobile (iOS keyboard) */
+(function () {
+  const input = document.getElementById('heroSearchInput');
+  if (!input) return;
+
+  let lastY = 0;
+
+  input.addEventListener('focus', () => {
+    lastY = window.scrollY || 0;
+    setTimeout(() => window.scrollTo(0, lastY), 50);
+    setTimeout(() => window.scrollTo(0, lastY), 250);
+    setTimeout(() => window.scrollTo(0, lastY), 600);
+  });
+
+  input.addEventListener('touchstart', () => {
+    try { input.focus({ preventScroll: true }); } catch (e) {}
+  }, { passive: true });
+})();
+</script>
 </body>
 </html>
