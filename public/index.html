@@ -21,11 +21,13 @@
   0) Reset / Base
 ========================================================= */
 *{box-sizing:border-box;margin:0;padding:0}
+html{overflow-x:hidden;}
 body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;
   line-height:1.6;
   color:#3f3a4f;
   background:linear-gradient(180deg,#ffffff 0%,#fff6d3 30%,#e6f2ff 90%);
+  overflow-x:hidden;
 }
 a{text-decoration:none;color:inherit}
 
@@ -81,7 +83,7 @@ header{
 /* =========================================================
   3) Layout
 ========================================================= */
-main{max-width:1100px;margin:0 auto;padding:16px}
+main{max-width:1100px;margin:0 auto;padding:16px; overflow-x:clip;}
 
 /* =========================================================
   4) Hero
@@ -679,16 +681,27 @@ footer{
   搜尋條（移到商品分類上方）
 ========================================================= */
 .search-strip{
+  position:sticky;
+  top:72px; /* 讓搜尋永遠貼在導覽列下方 */
+  z-index:9;
   max-width:1100px;
   margin:14px auto 6px;
-  padding:0 16px;
+  padding:10px 16px;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(188,220,255,.7);
+  border-radius:18px;
+  backdrop-filter:blur(8px);
+  box-shadow:0 10px 24px rgba(118,165,228,.18);
 }
+.search-strip .hero-search{width:100%; min-width:0;}
+.search-strip .hero-search input{min-width:0;}
 
 /* =========================================================
   Mobile：輪播卡片更高、更好看
 ========================================================= */
 @media (max-width:520px){
-  .search-strip{ margin:10px auto 4px; }
+  .search-strip{ margin:10px auto 4px; top:64px; padding:10px 12px; }
+
   .hero-banner{ height: 560px; }           /* 原本 420，手機加高 */
   .hero-banner-media{ max-height: 320px; } /* 原本約 230，手機加高 */
 }
@@ -778,6 +791,7 @@ footer{
           </div>
         </aside>
       </div>
+</section>
     
     <!-- =========================================================
       搜尋（移到商品分類上方，手機更好用）
@@ -793,7 +807,7 @@ footer{
         </div>
     </div>
 
-</section>
+
 
     <!-- =========================================================
       商品分類
