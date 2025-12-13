@@ -9,3 +9,28 @@ public/images2-帆布袋/
 
 *.rar
 *.zip
+
+# 忽略圖片資料夾
+images/
+images2-帆布袋/
+
+# 常見垃圾
+node_modules/
+.DS_Store
+.env
+
+# 訂單暫存（不要上）
+orders.json
+
+# 圖片資料夾
+images/
+images2-帆布袋/
+public/basic-images/
+
+# 筆記檔
+*.txt
+
+# 其他
+node_modules/
+.env
+.DS_Store

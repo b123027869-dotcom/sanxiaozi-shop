@@ -1,4 +1,6 @@
 // server.js
+console.log('🔥 SANXIAOZI ADMIN SERVER STARTED');
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -8,11 +10,59 @@ const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 
-// ===== 資料庫設定：SQLite（商品用） =====
+/* =========================================================
+ * Security: CSP (fix admin + supabase + API fetch)
+ * ========================================================= */
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "connect-src 'self' http://localhost:3000 https://*.supabase.co",
+      "font-src 'self' data:",
+    ].join("; ")
+  );
+  next();
+});
+
+
+
+/* =========================================================
+ * Basic Middlewares
+ * ========================================================= */
+
+// ✅ 允許的前端來源（依你的實際網域調整）
+const ALLOW_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5500',
+  'https://sanxiaozi-shop.onrender.com'
+]);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // 無 origin：curl / server-to-server / 同源情況
+    if (!origin) return cb(null, true);
+    if (ALLOW_ORIGINS.has(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true, // ✅ Cookie 模式需要
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-requested-with', 'x-pay-secret']
+}));
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+/* =========================================================
+ * SQLite: products
+ * ========================================================= */
 const db = new sqlite3.Database(path.join(__dirname, 'sanxiaozi.db'));
 
 db.serialize(() => {
-  // 商品表
   db.run(`
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +72,7 @@ db.serialize(() => {
       stock INTEGER DEFAULT 0,
       category TEXT,
       status TEXT DEFAULT 'on',
+      tag TEXT,
       imageUrl TEXT,
       description TEXT,
       variantsJson TEXT,
@@ -29,7 +80,6 @@ db.serialize(() => {
     )
   `);
 
-  // 訂單表（目前保留未使用，之後若要改成用 SQLite 存訂單可以用）
   db.run(`
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,35 +87,48 @@ db.serialize(() => {
       createdAt TEXT,
       totalAmount INTEGER DEFAULT 0,
       customerJson TEXT,
-      itemsJson TEXT
+      itemsJson TEXT,
+      paymentMethod TEXT,
+      paymentStatus TEXT,
+      paymentRef TEXT,
+      paidAt TEXT
     )
   `);
+
+  // 舊 DB 升級：補欄位（重複欄位會報錯，這裡忽略）
+  const addCol = (sql) => {
+    db.run(sql, (err) => {
+      if (err) {
+        const msg = String(err.message || "");
+        if (!msg.includes("duplicate column name")) {
+          console.error("DB migration error:", err);
+        }
+      }
+    });
+  };
+
+  // products migration
+  addCol(`ALTER TABLE products ADD COLUMN tag TEXT`);
+
+  // orders migration
+  addCol(`ALTER TABLE orders ADD COLUMN paymentMethod TEXT`);
+  addCol(`ALTER TABLE orders ADD COLUMN paymentStatus TEXT`);
+  addCol(`ALTER TABLE orders ADD COLUMN paymentRef TEXT`);
+  addCol(`ALTER TABLE orders ADD COLUMN paidAt TEXT`);
 });
 
-// ===== 基本中介層設定 =====
-app.use(cors());
-app.use(express.json());
-
-// 靜態檔案：public 資料夾
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ===== 訂單 JSON 檔案（後台列表 / 狀態用） =====
+/* =========================================================
+ * Orders JSON File (admin order list)
+ * ========================================================= */
 const DATA_FILE = path.join(__dirname, 'orders.json');
 
-// 後台登入密碼
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'a1216321';
-
-// ----- orders.json 讀寫 -----
 function readOrders() {
   try {
     const text = fs.readFileSync(DATA_FILE, 'utf8');
     const data = JSON.parse(text);
     return Array.isArray(data) ? data : [];
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      // 檔案不存在 → 視為空陣列
-      return [];
-    }
+    if (err.code === 'ENOENT') return [];
     console.error('readOrders error:', err);
     return [];
   }
@@ -79,76 +142,260 @@ function saveOrders(orders) {
   }
 }
 
-// 產生訂單編號：ND + YYYYMMDD + 四碼流水號
+// ND + YYYYMMDD + 4 digits
 function generateOrderId(allOrders) {
   const now = new Date();
-  const y = now.getFullYear().toString();
-  const m = (now.getMonth() + 1).toString().padStart(2, '0');
-  const d = now.getDate().toString().padStart(2, '0');
+  const y = String(now.getFullYear());
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
   const datePrefix = `${y}${m}${d}`;
 
-  const todayOrders = allOrders.filter(o =>
-    (o.id || '').startsWith('ND' + datePrefix)
-  );
+  const todayOrders = allOrders.filter(o => (o.id || '').startsWith('ND' + datePrefix));
   const nextIndex = todayOrders.length + 1;
-  const indexStr = nextIndex.toString().padStart(4, '0');
-  return `ND${datePrefix}${indexStr}`;
+  return `ND${datePrefix}${String(nextIndex).padStart(4, '0')}`;
 }
 
-// ===== 後台登入：簡易 Token 機制 =====
+/* =========================================================
+ * Admin Auth (最安全版：HttpOnly Cookie session)
+ * ========================================================= */
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'a1216321';
+
+// ✅ 這個保留給「未來金流 webhook」用（瀏覽器永遠不會拿到）
+const PAY_MARK_SECRET = process.env.PAY_MARK_SECRET || '';
+
+/* =========================================================
+ * Email (Resend): admin notify + customer confirmation
+ * Env:
+ *  - RESEND_API_KEY
+ *  - RESEND_FROM (verified sender or onboarding@resend.dev)
+ *  - ORDER_NOTIFY_EMAIL (store owner inbox)
+ * ========================================================= */
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM = process.env.RESEND_FROM || '';
+const ORDER_NOTIFY_EMAIL = process.env.ORDER_NOTIFY_EMAIL || '';
+
+async function sendEmailViaResend({ to, subject, html }) {
+  if (!RESEND_API_KEY || !RESEND_FROM || !to) return { ok: false, skipped: true };
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ from: RESEND_FROM, to, subject, html })
+    });
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.error('❌ Resend send failed', resp.status, text);
+      return { ok: false, status: resp.status };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('❌ Resend error', e);
+    return { ok: false, error: String(e) };
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function orderItemsToHtml(items) {
+  const rows = (items || []).map(it => {
+    const name = escapeHtml(it.name || '');
+    const spec = escapeHtml(it.specLabel || it.specKey || '');
+    const qty = Number(it.qty || 0) || 0;
+    const price = Number(it.price || 0) || 0;
+    const line = price * qty;
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${name}${spec ? ` <span style="color:#888">(${spec})</span>` : ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${qty}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">NT$ ${price}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">NT$ ${line}</td>
+    </tr>`;
+  }).join('');
+  return `<table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;">商品</th>
+        <th style="text-align:right;padding:6px 8px;border-bottom:2px solid #ddd;">數量</th>
+        <th style="text-align:right;padding:6px 8px;border-bottom:2px solid #ddd;">單價</th>
+        <th style="text-align:right;padding:6px 8px;border-bottom:2px solid #ddd;">小計</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function buildCustomerMail({ orderId, customer, items, totalAmount, shippingFee }) {
+  const cname = escapeHtml(customer?.name || '');
+  const cphone = escapeHtml(customer?.phone || '');
+  const cship = escapeHtml(customer?.ship || customer?.shipType || customer?.shipping || customer?.delivery || '');
+  const caddr = escapeHtml(customer?.address || customer?.store || customer?.storeName || customer?.storeId || '');
+  return `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;line-height:1.7;color:#333;">
+      <h2 style="margin:0 0 10px;">📦 訂單成立通知</h2>
+      <p style="margin:0 0 12px;">親愛的 <strong>${cname}</strong> 您好，已收到您的訂單，我們會依序為您準備出貨 🤍</p>
+      <div style="padding:12px 14px;border:1px solid #eee;border-radius:12px;background:#fafafa;margin-bottom:12px;">
+        <div><strong>訂單編號：</strong>${escapeHtml(orderId)}</div>
+        <div><strong>聯絡電話：</strong>${cphone}</div>
+        ${cship ? `<div><strong>取貨方式：</strong>${cship}</div>` : ''}
+        ${caddr ? `<div><strong>收件資訊：</strong>${caddr}</div>` : ''}
+      </div>
+      ${orderItemsToHtml(items)}
+      <div style="margin-top:12px;text-align:right;font-size:14px;">
+        <div>運費：NT$ ${Number(shippingFee||0)||0}</div>
+        <div style="font-size:16px;"><strong>總金額：NT$ ${Number(totalAmount||0)||0}</strong></div>
+      </div>
+      <p style="margin-top:14px;color:#666;">若有任何問題，歡迎直接回覆此信。</p>
+      <p style="margin:0;">— 三小隻日常百貨 ☀</p>
+    </div>
+  `;
+}
+
+function buildAdminMail({ orderId, customer, items, totalAmount, shippingFee, fulfillType }) {
+  const cname = escapeHtml(customer?.name || '');
+  const cemail = escapeHtml(customer?.email || '');
+  const cphone = escapeHtml(customer?.phone || '');
+  const cship = escapeHtml(customer?.ship || customer?.shipType || customer?.shipping || customer?.delivery || '');
+  const caddr = escapeHtml(customer?.address || customer?.store || customer?.storeName || customer?.storeId || '');
+  const ft = fulfillType ? `（${escapeHtml(fulfillType)}）` : '';
+  return `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;line-height:1.7;color:#333;">
+      <h2 style="margin:0 0 10px;">🔔 新訂單通知 ${ft}</h2>
+      <div style="padding:12px 14px;border:1px solid #eee;border-radius:12px;background:#fafafa;margin-bottom:12px;">
+        <div><strong>訂單編號：</strong>${escapeHtml(orderId)}</div>
+        <div><strong>客戶：</strong>${cname}</div>
+        <div><strong>Email：</strong>${cemail}</div>
+        <div><strong>電話：</strong>${cphone}</div>
+        ${cship ? `<div><strong>取貨方式：</strong>${cship}</div>` : ''}
+        ${caddr ? `<div><strong>收件資訊：</strong>${caddr}</div>` : ''}
+      </div>
+      ${orderItemsToHtml(items)}
+      <div style="margin-top:12px;text-align:right;font-size:14px;">
+        <div>運費：NT$ ${Number(shippingFee||0)||0}</div>
+        <div style="font-size:16px;"><strong>總金額：NT$ ${Number(totalAmount||0)||0}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
 const adminTokens = new Set();
+const ADMIN_COOKIE_NAME = 'admin_session';
 
 function createAdminToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+function parseCookies(req) {
+  const header = req.headers.cookie || '';
+  const out = {};
+  header.split(';').forEach(part => {
+    const [k, ...v] = part.trim().split('=');
+    if (!k) return;
+    out[k] = decodeURIComponent(v.join('=') || '');
+  });
+  return out;
+}
+
+// ✅ 防 CSRF：要求 AJAX header（跨站表單打不出來）
+function requireAjaxHeader(req, res, next) {
+  const v = String(req.headers['x-requested-with'] || '');
+  if (v !== 'XMLHttpRequest') {
+    return res.status(403).json({ ok: false, message: 'forbidden' });
+  }
+  next();
+}
+
 function authAdmin(req, res, next) {
-  const token = req.headers['x-admin-token'];
+  const cookies = parseCookies(req);
+  const token = cookies[ADMIN_COOKIE_NAME];
+
   if (!token || !adminTokens.has(token)) {
     return res.status(401).json({ ok: false, message: '未登入或權限不足' });
   }
   next();
 }
 
-// 後台登入
-app.post('/api/admin/login', (req, res) => {
+function requirePaySecret(req, res, next) {
+  const got = String(req.headers['x-pay-secret'] || '');
+  if (!PAY_MARK_SECRET) {
+    return res.status(500).json({ ok: false, message: 'PAY_MARK_SECRET not set' });
+  }
+  if (!got || got !== PAY_MARK_SECRET) {
+    return res.status(401).json({ ok: false, message: 'unauthorized' });
+  }
+  next();
+}
+
+// ✅ 登入：寫 HttpOnly Cookie（不回傳 token）
+app.post('/api/admin/login', requireAjaxHeader, (req, res) => {
   const { password } = req.body || {};
-  if (!password) {
-    return res.status(400).json({ ok: false, message: '請輸入密碼' });
-  }
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ ok: false, message: '密碼錯誤' });
-  }
+  if (!password) return res.status(400).json({ ok: false, message: '請輸入密碼' });
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: '密碼錯誤' });
 
   const token = createAdminToken();
   adminTokens.add(token);
-  res.json({ ok: true, token });
-});
 
-// 後台登出
-app.post('/api/admin/logout', authAdmin, (req, res) => {
-  const token = req.headers['x-admin-token'];
-  if (token) adminTokens.delete(token);
+  const isProd = process.env.NODE_ENV === 'production';
+  res.setHeader('Set-Cookie', [
+    `${ADMIN_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 7}${isProd ? '; Secure' : ''}`
+  ]);
+
   res.json({ ok: true });
 });
 
-// ====================================================================
-// 前台：商品列表（只顯示上架中的商品）
-// ====================================================================
+// ✅ 登出：清 cookie + 清 session
+app.post('/api/admin/logout', authAdmin, requireAjaxHeader, (req, res) => {
+  const cookies = parseCookies(req);
+  const token = cookies[ADMIN_COOKIE_NAME];
+  if (token) adminTokens.delete(token);
+
+  const isProd = process.env.NODE_ENV === 'production';
+  res.setHeader('Set-Cookie', [
+    `${ADMIN_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${isProd ? '; Secure' : ''}`
+  ]);
+
+  res.json({ ok: true });
+});
+
+/* =========================================================
+ * Helpers: safe JSON parse
+ * ========================================================= */
+function safeJsonParse(text, fallback) {
+  try {
+    return text ? JSON.parse(text) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/* =========================================================
+ * Helpers: compute total stock from variants
+ * ========================================================= */
+function computeTotalStock(variants) {
+  try {
+    if (!Array.isArray(variants) || variants.length === 0) return null; // null means "no variants"
+    return variants.reduce((sum, v) => sum + (Number(v?.stock || 0) || 0), 0);
+  } catch {
+    return null;
+  }
+}
+
+/* =========================================================
+ * Front: products list (only status=on)
+ * ========================================================= */
 app.get('/api/products', (req, res) => {
   const sql = `
     SELECT
-      id,
-      code,
-      name,
-      price,
-      stock,
-      category,
-      status,
-      imageUrl,
-      description,
-      variantsJson,
-      detailImagesJson
+      id, code, name, price, stock, category, status, tag,
+      imageUrl, description, variantsJson, detailImagesJson
     FROM products
     WHERE status = 'on'
     ORDER BY id DESC
@@ -161,31 +408,20 @@ app.get('/api/products', (req, res) => {
     }
 
     const products = (rows || []).map(row => {
-      let variants = [];
-      try {
-        variants = row.variantsJson ? JSON.parse(row.variantsJson) : [];
-      } catch {
-        variants = [];
-      }
+      const variants = safeJsonParse(row.variantsJson, []);
+const detailImages = safeJsonParse(row.detailImagesJson, []);
 
-      let detailImages = [];
-      try {
-        detailImages = row.detailImagesJson ? JSON.parse(row.detailImagesJson) : [];
-      } catch {
-        detailImages = [];
-      }
-
-      // 分類（後台 category 欄位可以填：cup desk gift 等）
       const categories = row.category
         ? row.category.split(/[,\s]+/).filter(Boolean)
         : [];
 
-      // 商品層級的小圖（所有款式共用）
       const commonThumbs = detailImages.length
         ? detailImages
         : (row.imageUrl ? [row.imageUrl] : []);
 
-      // 前台 specs：由 variants 轉換
+      const vTotal = computeTotalStock(variants);
+      const computedStock = (vTotal == null) ? row.stock : vTotal;
+
       let specs;
       if (variants.length > 0) {
         specs = variants.map((v, idx) => {
@@ -196,7 +432,7 @@ app.get('/api/products', (req, res) => {
             : commonThumbs;
 
           return {
-            key: v.name || `v${idx + 1}`,        // key 用 name
+            key: v.name || `v${idx + 1}`,
             label: v.name || `款式 ${idx + 1}`,
             stock: vStock,
             mainImg,
@@ -204,7 +440,6 @@ app.get('/api/products', (req, res) => {
           };
         });
       } else {
-        // 沒設定款式時給一個預設款
         specs = [{
           key: 'default',
           label: '預設款',
@@ -219,9 +454,9 @@ app.get('/api/products', (req, res) => {
         code: row.code,
         name: row.name,
         price: row.price,
-        stock: row.stock,
+        stock: computedStock,
         categories,
-        tag: '',
+        tag: row.tag || '',
         subtitle: '',
         priceNote: '',
         shortDesc: row.description
@@ -237,244 +472,438 @@ app.get('/api/products', (req, res) => {
   });
 });
 
-// ====================================================================
-// 前台：建立訂單（檢查庫存 + 扣 SQLite 庫存 + 寫入 orders.json）
-// ====================================================================
+/* =========================================================
+ * Front: create order (check stock -> deduct -> write orders.json)
+ * ========================================================= */
 app.post('/api/orders', (req, res) => {
-  const { customer, items } = req.body || {};
+  try {
+    const { customer, items } = req.body || {};
 
-  if (!customer || !customer.name || !customer.phone || !customer.email) {
-    return res.status(400).json({ ok: false, message: '缺少必要的顧客資料' });
-  }
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ ok: false, message: '購物車是空的' });
-  }
+    if (!customer || !customer.name || !customer.phone || !customer.email) {
+      return res.status(400).json({ ok: false, message: '缺少必要的顧客資料' });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ ok: false, message: '購物車是空的' });
+    }
 
-  // 計算總金額
-  const totalAmount = items.reduce((sum, it) => {
-    return sum + (Number(it.price || 0) * Number(it.qty || 0));
-  }, 0);
+    // Shipping rules
+    const FREE_SHIP_THRESHOLD = 699;
+    const SHIPPING_FEE = 100;
+    const SHIP_METHODS_WITH_FEE = new Set(['711', 'family', 'hilife', 'ok', 'home']);
 
-  const allOrders = readOrders();
-  const id = generateOrderId(allOrders);
-  const now = new Date().toISOString();
+    const subtotal = items.reduce((sum, it) => {
+      return sum + (Number(it.price || 0) * Number(it.qty || 0));
+    }, 0);
 
-  const newOrder = {
-    id,
-    createdAt: now,
-    updatedAt: now,
-    status: 'pending',
-    totalAmount,
-    items,
-    customer
-  };
+    // Read shipType from possible fields
+    let shipType =
+      customer.ship ||
+      customer.shipType ||
+      customer.shipping ||
+      customer.ship_method ||
+      customer.delivery ||
+      '';
 
-  // 使用 SQLite transaction 確保庫存檢查 + 扣庫存是原子操作
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
+    shipType = String(shipType || '');
 
-    let failed = false;
-    let failMessage = "";
-    const insufficient = [];
+    // Normalize
+    if (shipType.includes('7-11') || shipType.includes('711')) shipType = '711';
+    else if (shipType.includes('全家') || shipType.toLowerCase().includes('family')) shipType = 'family';
+    else if (shipType.includes('萊爾富') || shipType.toLowerCase().includes('hilife')) shipType = 'hilife';
+    else if (shipType.includes('ok') || shipType.includes('OK')) shipType = 'ok';
+    else if (shipType.includes('宅配') || shipType.toLowerCase().includes('home')) shipType = 'home';
 
-    // 先檢查每一筆庫存
-    const processItem = (index) => {
-      if (index >= items.length) {
-        // 所有商品庫存 OK，開始扣庫存
-        return deductItem(0);
-      }
+    let shippingFee = 0;
+    if (SHIP_METHODS_WITH_FEE.has(shipType)) {
+      shippingFee = subtotal >= FREE_SHIP_THRESHOLD ? 0 : SHIPPING_FEE;
+    } else {
+      shippingFee = subtotal >= FREE_SHIP_THRESHOLD ? 0 : SHIPPING_FEE;
+      shipType = shipType || 'unknown';
+    }
 
-      const it = items[index];
-      const pid = it.productId;
-      const specKey = it.specKey || null;
-      const qty = Number(it.qty || 0);
+    const totalAmount = subtotal + shippingFee;
 
-      if (!pid || qty <= 0) {
-        return processItem(index + 1);
-      }
+    const allOrders = readOrders();
+    const id = generateOrderId(allOrders);
+    const now = new Date().toISOString();
 
-      db.get(
-        "SELECT stock, variantsJson FROM products WHERE id = ?",
-        [pid],
-        (err, row) => {
+    // ✅ 後台用 new/completed/cancelled 篩選，所以新訂單用 new
+    // ✅ 同步 shipType 到 customer.ship
+    const fixedCustomer = { ...customer, ship: shipType };
+
+    const payMethod = String(customer.pay || "shopee").toLowerCase();
+    let payStatus = "unpaid";
+    if (["linepay", "ecpay", "card"].includes(payMethod)) payStatus = "pending";
+
+    const newOrder = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      status: 'new',
+
+      shipType,
+      subtotal,
+      shippingFee,
+      totalAmount,
+
+      paymentMethod: payMethod,
+      paymentStatus: payStatus,
+      paymentRef: "",
+      paidAt: "",
+
+      items,
+      customer: fixedCustomer
+    };
+
+    // Transaction: check stock then deduct
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      const insufficient = [];
+
+      const tagMap = {}; // productId -> tag
+
+      const processItem = (index) => {
+        if (index >= items.length) return deductItem(0);
+
+        const it = items[index];
+        const pid = it.productId;
+        const specKey = it.specKey || null;
+        const qty = Number(it.qty || 0);
+
+        if (!pid || qty <= 0) return processItem(index + 1);
+
+        db.get('SELECT stock, variantsJson, tag FROM products WHERE id = ?', [pid], (err, row) => {
           if (err || !row) {
-            failed = true;
-            failMessage = "查詢商品失敗";
-            return db.run("ROLLBACK", () =>
-              res.status(500).json({ ok: false, message: failMessage })
+            return db.run('ROLLBACK', () =>
+              res.status(500).json({ ok: false, message: '查詢商品失敗' })
             );
           }
 
-          let stock = Number(row.stock || 0);
-          let variants = [];
-          try {
-            variants = row.variantsJson ? JSON.parse(row.variantsJson) : [];
-          } catch {
-            variants = [];
-          }
+          const stock = Number(row.stock || 0);
+          const variants = safeJsonParse(row.variantsJson, []);
+          tagMap[pid] = row.tag || '';
 
-          if (specKey && variants.length > 0) {
+if (specKey && variants.length > 0) {
             const v = variants.find(v => v.name === specKey || v.key === specKey);
             if (!v) {
-              failed = true;
-              failMessage = "找不到該款式";
-              return db.run("ROLLBACK", () =>
-                res.status(400).json({ ok: false, message: failMessage })
+              return db.run('ROLLBACK', () =>
+                res.status(400).json({ ok: false, message: '找不到該款式' })
               );
             }
-            if (Number(v.stock) < qty) {
-              insufficient.push({
-                productId: pid,
-                specKey,
-                remain: Number(v.stock) || 0,
-                want: qty
-              });
+            if (Number(v.stock || 0) < qty) {
+              insufficient.push({ productId: pid, specKey, remain: Number(v.stock || 0), want: qty });
             }
           } else {
             if (stock < qty) {
-              insufficient.push({
-                productId: pid,
-                specKey: null,
-                remain: stock,
-                want: qty
-              });
+              insufficient.push({ productId: pid, specKey: null, remain: stock, want: qty });
             }
           }
 
           if (insufficient.length > 0) {
-            failed = true;
-            failMessage = "部分商品庫存不足";
-            return db.run("ROLLBACK", () =>
-              res.status(400).json({ ok: false, message: failMessage, insufficient })
+            return db.run('ROLLBACK', () =>
+              res.status(400).json({ ok: false, message: '部分商品庫存不足', insufficient })
             );
           }
 
           processItem(index + 1);
-        }
-      );
-    };
-
-    // 實際扣庫存
-    const deductItem = (idx) => {
-      if (idx >= items.length) {
-        // 扣庫存完成 → 寫入訂單 JSON → COMMIT
-        const updatedOrders = readOrders();
-        updatedOrders.push(newOrder);
-        saveOrders(updatedOrders);
-
-        return db.run("COMMIT", () => {
-          res.json({
-            ok: true,
-            id: newOrder.id,
-            createdAt: newOrder.createdAt,
-            status: newOrder.status,
-            totalAmount: newOrder.totalAmount
-          });
         });
+      };
+
+      const deductItem = (idx) => {
+        if (idx >= items.length) {
+  // ✅ Split orders: 現貨 / 備貨(10-15天) 分開出單
+  const normalizedItems = (items || []).map(it => ({
+    ...it,
+    tag: it.tag || tagMap[it.productId] || ''
+  }));
+
+  const leadtimeItems = normalizedItems.filter(it => it.tag === 'leadtime_10_15');
+  const stockItems = normalizedItems.filter(it => it.tag !== 'leadtime_10_15');
+
+  const updatedOrders = readOrders();
+
+  // 重新產生 ID（可能會有 2 張單）
+  const id1 = generateOrderId(updatedOrders);
+  const now2 = new Date().toISOString();
+
+  // shippingFee 只收一次：現貨單收，備貨單不再重複收
+  const stockSubtotal = stockItems.reduce((s, it) => s + (Number(it.price||0)*Number(it.qty||0)), 0);
+  const leadSubtotal  = leadtimeItems.reduce((s, it) => s + (Number(it.price||0)*Number(it.qty||0)), 0);
+
+  const stockOrder = {
+    ...newOrder,
+    id: id1,
+    createdAt: now2,
+    updatedAt: now2,
+    fulfillType: 'stock',        // ✅ 現貨單
+    items: stockItems,
+    subtotal: stockSubtotal,
+    totalAmount: stockSubtotal + shippingFee
+  };
+
+  let leadOrder = null;
+
+  if (leadtimeItems.length > 0 && stockItems.length > 0) {
+    // 有拆單：備貨單單獨一張
+    const id2 = generateOrderId([...updatedOrders, stockOrder]);
+    leadOrder = {
+      ...newOrder,
+      id: id2,
+      createdAt: now2,
+      updatedAt: now2,
+      fulfillType: 'leadtime',   // ✅ 備貨單
+      items: leadtimeItems,
+      subtotal: leadSubtotal,
+      shippingFee: 0,
+      totalAmount: leadSubtotal
+    };
+  } else if (leadtimeItems.length > 0 && stockItems.length === 0) {
+    // 全部都是備貨：就只出一張備貨單（沿用 stockOrder 這張）
+    stockOrder.fulfillType = 'leadtime';
+    stockOrder.items = leadtimeItems;
+    stockOrder.subtotal = leadSubtotal;
+    stockOrder.totalAmount = leadSubtotal + shippingFee;
+  } else {
+    // 全部現貨：維持一張
+  }
+
+  updatedOrders.push(stockOrder);
+  if (leadOrder) updatedOrders.push(leadOrder);
+  saveOrders(updatedOrders);
+
+  return db.run('COMMIT', () => {
+  (async () => {
+    let adminSent = false;
+    let customerSent = false;
+
+    // 先嘗試寄信（失敗也不影響下單成功）
+    try {
+      if (ORDER_NOTIFY_EMAIL) {
+        // 店長：現貨單
+        const r1 = await sendEmailViaResend({
+          to: ORDER_NOTIFY_EMAIL,
+          subject: `🔔 新訂單通知：${stockOrder.id}`,
+          html: buildAdminMail({
+            orderId: stockOrder.id,
+            customer,
+            items: stockOrder.items,
+            totalAmount: stockOrder.totalAmount,
+            shippingFee: stockOrder.shippingFee,
+            fulfillType: stockOrder.fulfillType || ''
+          })
+        });
+
+        // 店長：若拆單，備貨單也寄一封
+        let r2 = { ok: true, skipped: true };
+        if (leadOrder) {
+          r2 = await sendEmailViaResend({
+            to: ORDER_NOTIFY_EMAIL,
+            subject: `🔔 新訂單通知（備貨單）：${leadOrder.id}`,
+            html: buildAdminMail({
+              orderId: leadOrder.id,
+              customer,
+              items: leadOrder.items,
+              totalAmount: leadOrder.totalAmount,
+              shippingFee: leadOrder.shippingFee,
+              fulfillType: leadOrder.fulfillType || 'leadtime'
+            })
+          });
+        }
+
+        adminSent = !!(r1.ok && (leadOrder ? r2.ok : true));
       }
+    } catch (e) {
+      console.error('❌ admin mail error', e);
+    }
 
-      const it = items[idx];
-      const pid = it.productId;
-      const specKey = it.specKey || null;
-      const qty = Number(it.qty || 0);
+    try {
+      const toCustomer = String(customer?.email || '').trim();
+      if (toCustomer) {
+        const combinedItems = [
+          ...(stockOrder?.items || []),
+          ...(leadOrder?.items || [])
+        ];
+        const combinedId = leadOrder ? `${stockOrder.id} / ${leadOrder.id}` : stockOrder.id;
+        const combinedTotal = (Number(stockOrder.totalAmount || 0) || 0) + (leadOrder ? (Number(leadOrder.totalAmount || 0) || 0) : 0);
 
-      if (!pid || qty <= 0) {
-        return deductItem(idx + 1);
+        const rc = await sendEmailViaResend({
+          to: toCustomer,
+          subject: `📦【三小隻日常百貨】訂單成立通知：${combinedId}`,
+          html: buildCustomerMail({
+            orderId: combinedId,
+            customer,
+            items: combinedItems,
+            totalAmount: combinedTotal,
+            shippingFee: stockOrder.shippingFee
+          })
+        });
+        customerSent = !!rc.ok;
       }
+    } catch (e) {
+      console.error('❌ customer mail error', e);
+    }
 
-      db.get(
-        "SELECT stock, variantsJson FROM products WHERE id = ?",
-        [pid],
-        (err, row) => {
+    res.json({
+      ok: true,
+      id: stockOrder.id,
+      splitIds: leadOrder ? [stockOrder.id, leadOrder.id] : [stockOrder.id],
+      createdAt: stockOrder.createdAt,
+      status: stockOrder.status,
+      subtotal: stockOrder.subtotal,
+      shippingFee: stockOrder.shippingFee,
+      totalAmount: stockOrder.totalAmount + (leadOrder ? leadOrder.totalAmount : 0),
+      shipType: stockOrder.shipType,
+      email: { adminSent, customerSent }
+    });
+  })();
+});
+}
+const it = items[idx];
+        const pid = it.productId;
+        const specKey = it.specKey || null;
+        const qty = Number(it.qty || 0);
+
+        if (!pid || qty <= 0) return deductItem(idx + 1);
+
+        db.get('SELECT stock, variantsJson, tag FROM products WHERE id = ?', [pid], (err, row) => {
           if (err || !row) {
-            failed = true;
-            const msg = "扣庫存時找不到商品";
-            return db.run("ROLLBACK", () =>
-              res.status(500).json({ ok: false, message: msg })
+            return db.run('ROLLBACK', () =>
+              res.status(500).json({ ok: false, message: '扣庫存時找不到商品' })
             );
           }
 
           let stock = Number(row.stock || 0);
-          let variants = [];
-          try {
-            variants = row.variantsJson ? JSON.parse(row.variantsJson) : [];
-          } catch {
-            variants = [];
-          }
+          const variants = safeJsonParse(row.variantsJson, []);
+stock = Math.max(0, stock - qty);
 
-          // 扣總庫存
-          stock = Math.max(0, stock - qty);
-
-          // 扣款式庫存
           if (specKey && variants.length > 0) {
             const v = variants.find(v => v.name === specKey || v.key === specKey);
-            if (v) {
-              let vStock = Number(v.stock || 0);
-              v.stock = Math.max(0, vStock - qty);
-            }
+            if (v) v.stock = Math.max(0, Number(v.stock || 0) - qty);
           }
 
-          const newVariantsJson = JSON.stringify(variants);
-
           db.run(
-            "UPDATE products SET stock = ?, variantsJson = ? WHERE id = ?",
-            [stock, newVariantsJson, pid],
+            'UPDATE products SET stock = ?, variantsJson = ? WHERE id = ?',
+            [stock, JSON.stringify(variants), pid],
             (err2) => {
               if (err2) {
-                failed = true;
-                const msg = "更新庫存失敗";
-                return db.run("ROLLBACK", () =>
-                  res.status(500).json({ ok: false, message: msg })
+                return db.run('ROLLBACK', () =>
+                  res.status(500).json({ ok: false, message: '更新庫存失敗' })
                 );
               }
               deductItem(idx + 1);
             }
           );
-        }
-      );
-    };
+        });
+      };
 
-    processItem(0);
-  });
+      processItem(0);
+    });
+
+  } catch (err) {
+    console.error('❌ 建立訂單失敗', err);
+    res.status(500).json({ ok: false, message: '建立訂單失敗，請稍後再試' });
+  }
 });
 
-// ====================================================================
-// 前台：訂單查詢（電話 + 訂單編號）
-// ====================================================================
+/* =========================================================
+ * Front: query order (phone + id)
+ * ========================================================= */
 app.get('/api/orders/query', (req, res) => {
-  const phone = (req.query.phone || '').trim();
-  const id = (req.query.id || '').trim();
+  const phone = String(req.query.phone || '').trim();
+  const id = String(req.query.id || '').trim();
 
-  if (!phone || !id) {
-    return res.status(400).json({ message: '請提供 phone 與 id' });
-  }
+  if (!phone || !id) return res.status(400).json({ message: '請提供 phone 與 id' });
 
   const orders = readOrders();
-  const order = orders.find(
-    o =>
-      (o.id === id) &&
-      o.customer &&
-      (String(o.customer.phone || '').trim() === phone)
+  const order = orders.find(o =>
+    o.id === id &&
+    o.customer &&
+    String(o.customer.phone || '').trim() === phone
   );
 
   if (!order) {
     return res.status(404).json({ message: '查無此訂單，請確認電話與訂單編號是否正確。' });
   }
 
-  res.json({ ok: true, order });
+  // ✅ 前台查詢訂單狀態：統一狀態名稱（避免舊資料是 pending）
+  const normalizedStatus = (() => {
+    const s = String(order.status || 'new');
+    if (s === 'pending') return 'new';
+    return s;
+  })();
+
+  const statusText = (() => {
+    switch (normalizedStatus) {
+      case 'shipped': return '已出貨';
+      case 'completed': return '已完成';
+      case 'cancelled': return '已取消';
+      default: return '未完成 / 新訂單';
+    }
+  })();
+
+  // ✅ 回傳 statusText，前台只要顯示這個就不會漏掉「已出貨」
+  res.json({
+    ok: true,
+    order: {
+      ...order,
+      status: normalizedStatus,
+      statusText
+    }
+  });
 });
 
-// ====================================================================
-// 後台：商品管理（使用 SQLite，建議加 authAdmin）
-// ====================================================================
-app.get('/api/admin/products', authAdmin, (req, res) => {
+/* =========================================================
+ * Admin: mark paid (最安全版：只要後台 Cookie + 防 CSRF header)
+ * ========================================================= */
+app.post("/api/payments/mark-paid", authAdmin, requireAjaxHeader, (req, res) => {
+  const { orderId, paymentRef } = req.body || {};
+  if (!orderId) return res.status(400).json({ ok: false, message: "missing orderId" });
+
+  const orders = readOrders();
+  const idx = orders.findIndex(o => o.id === orderId);
+  if (idx === -1) return res.status(404).json({ ok: false, message: "找不到訂單" });
+
+  orders[idx].paymentStatus = "paid";
+  orders[idx].paymentRef = paymentRef || orders[idx].paymentRef || "";
+  orders[idx].paidAt = new Date().toISOString();
+  orders[idx].updatedAt = new Date().toISOString();
+
+  saveOrders(orders);
+  res.json({ ok: true, order: orders[idx] });
+});
+
+/* =========================================================
+ * OPTIONAL: Payment webhook (server-to-server only, uses PAY_MARK_SECRET)
+ * ========================================================= */
+app.post("/api/payments/webhook/mark-paid", requirePaySecret, (req, res) => {
+  const { orderId, paymentRef } = req.body || {};
+  if (!orderId) return res.status(400).json({ ok: false, message: "missing orderId" });
+
+  const orders = readOrders();
+  const idx = orders.findIndex(o => o.id === orderId);
+  if (idx === -1) return res.status(404).json({ ok: false, message: "找不到訂單" });
+
+  orders[idx].paymentStatus = "paid";
+  orders[idx].paymentRef = paymentRef || orders[idx].paymentRef || "";
+  orders[idx].paidAt = new Date().toISOString();
+  orders[idx].updatedAt = new Date().toISOString();
+
+  saveOrders(orders);
+  res.json({ ok: true });
+});
+
+/* =========================================================
+ * Admin: products (SQLite)
+ * ========================================================= */
+app.get('/api/admin/products', authAdmin, requireAjaxHeader, (req, res) => {
   db.all('SELECT * FROM products ORDER BY id DESC', [], (err, rows) => {
     if (err) {
       console.error('取得商品列表失敗', err);
       return res.status(500).json({ success: false, message: '取得商品失敗' });
     }
 
-    const products = rows.map(row => ({
+    const products = (rows || []).map(row => ({
       id: row.id,
       code: row.code,
       name: row.name,
@@ -482,56 +911,49 @@ app.get('/api/admin/products', authAdmin, (req, res) => {
       stock: row.stock,
       category: row.category,
       status: row.status,
+      tag: row.tag || '',
       imageUrl: row.imageUrl,
       description: row.description,
-      variants: row.variantsJson ? JSON.parse(row.variantsJson) : [],
-      detailImages: row.detailImagesJson ? JSON.parse(row.detailImagesJson) : []
+      variants: safeJsonParse(row.variantsJson, []),
+      detailImages: safeJsonParse(row.detailImagesJson, [])
     }));
 
     res.json({ success: true, products });
   });
 });
 
-app.post('/api/admin/products', authAdmin, (req, res) => {
+app.post('/api/admin/products', authAdmin, requireAjaxHeader, (req, res) => {
   const {
-    code,
-    name,
-    price,
-    stock,
-    category,
-    status,
-    imageUrl,
-    description,
-    variants,
-    detailImages
+    code, name, price, stock, category, status, tag, imageUrl, description, variants, detailImages
   } = req.body || {};
 
-  if (!name) {
-    return res.status(400).json({ success: false, message: '缺少商品名稱' });
-  }
+  if (!name) return res.status(400).json({ success: false, message: '缺少商品名稱' });
 
   const priceVal = Number(price || 0);
   const stockVal = Number(stock || 0);
 
-  const variantsJson = JSON.stringify(variants || []);
-  const detailImagesJson = JSON.stringify(detailImages || []);
+  // ✅ 總庫存自動計算：有 variants 就用 variants 庫存加總
+  const vTotal = computeTotalStock(variants || []);
+  const finalStockVal = (vTotal == null) ? stockVal : vTotal;
 
   const sql = `
     INSERT INTO products
-    (code, name, price, stock, category, status, imageUrl, description, variantsJson, detailImagesJson)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (code, name, price, stock, category, status, tag, imageUrl, description, variantsJson, detailImagesJson)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
+
   const params = [
     code || null,
     name,
     isNaN(priceVal) ? 0 : priceVal,
-    isNaN(stockVal) ? 0 : stockVal,
+    isNaN(finalStockVal) ? 0 : finalStockVal,
     category || null,
     status || 'on',
+    tag || null,
     imageUrl || null,
     description || null,
-    variantsJson,
-    detailImagesJson
+    JSON.stringify(variants || []),
+    JSON.stringify(detailImages || [])
   ];
 
   db.run(sql, params, function (err) {
@@ -543,44 +965,38 @@ app.post('/api/admin/products', authAdmin, (req, res) => {
   });
 });
 
-app.patch('/api/admin/products/:id', authAdmin, (req, res) => {
+app.patch('/api/admin/products/:id', authAdmin, requireAjaxHeader, (req, res) => {
   const productId = req.params.id;
   const {
-    code,
-    name,
-    price,
-    stock,
-    category,
-    status,
-    imageUrl,
-    description,
-    variants,
-    detailImages
+    code, name, price, stock, category, status, tag, imageUrl, description, variants, detailImages
   } = req.body || {};
 
   const priceVal = Number(price || 0);
   const stockVal = Number(stock || 0);
 
-  const variantsJson = JSON.stringify(variants || []);
-  const detailImagesJson = JSON.stringify(detailImages || []);
+  // ✅ 總庫存自動計算：有 variants 就用 variants 庫存加總
+  const vTotal = computeTotalStock(variants || []);
+  const finalStockVal = (vTotal == null) ? stockVal : vTotal;
 
   const sql = `
     UPDATE products
     SET code = ?, name = ?, price = ?, stock = ?, category = ?, status = ?,
-        imageUrl = ?, description = ?, variantsJson = ?, detailImagesJson = ?
+        tag = ?, imageUrl = ?, description = ?, variantsJson = ?, detailImagesJson = ?
     WHERE id = ?
   `;
+
   const params = [
     code || null,
     name || '',
     isNaN(priceVal) ? 0 : priceVal,
-    isNaN(stockVal) ? 0 : stockVal,
+    isNaN(finalStockVal) ? 0 : finalStockVal,
     category || null,
     status || 'on',
+    tag || null,
     imageUrl || null,
     description || null,
-    variantsJson,
-    detailImagesJson,
+    JSON.stringify(variants || []),
+    JSON.stringify(detailImages || []),
     productId
   ];
 
@@ -593,7 +1009,7 @@ app.patch('/api/admin/products/:id', authAdmin, (req, res) => {
   });
 });
 
-app.delete('/api/admin/products/:id', authAdmin, (req, res) => {
+app.delete('/api/admin/products/:id', authAdmin, requireAjaxHeader, (req, res) => {
   const productId = req.params.id;
 
   db.run('DELETE FROM products WHERE id = ?', [productId], function (err) {
@@ -605,27 +1021,24 @@ app.delete('/api/admin/products/:id', authAdmin, (req, res) => {
   });
 });
 
-// ====================================================================
-// 後台：訂單管理（使用 orders.json，token 保護）
-// ====================================================================
-app.get('/api/admin/orders', authAdmin, (req, res) => {
+/* =========================================================
+ * Admin: orders (orders.json)
+ * ========================================================= */
+app.get('/api/admin/orders', authAdmin, requireAjaxHeader, (req, res) => {
   const orders = readOrders();
   res.json({ ok: true, orders });
 });
 
-app.patch('/api/admin/orders/:id', authAdmin, (req, res) => {
+app.patch('/api/admin/orders/:id', authAdmin, requireAjaxHeader, (req, res) => {
   const { id } = req.params;
   const { status } = req.body || {};
 
-  if (!status) {
-    return res.status(400).json({ ok: false, message: '缺少狀態欄位' });
-  }
+  if (!status) return res.status(400).json({ ok: false, message: '缺少狀態欄位' });
 
   const orders = readOrders();
   const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) {
-    return res.status(404).json({ ok: false, message: '找不到這筆訂單' });
-  }
+
+  if (idx === -1) return res.status(404).json({ ok: false, message: '找不到這筆訂單' });
 
   orders[idx].status = status;
   orders[idx].updatedAt = new Date().toISOString();
@@ -634,7 +1047,9 @@ app.patch('/api/admin/orders/:id', authAdmin, (req, res) => {
   res.json({ ok: true, order: orders[idx] });
 });
 
-// ===== 啟動伺服器 =====
+/* =========================================================
+ * Start
+ * ========================================================= */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('Server running on port', PORT);
