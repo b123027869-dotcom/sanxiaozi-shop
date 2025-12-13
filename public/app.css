@@ -1,59 +1,43 @@
-/* ===== Order Success Modal ===== */
-#order-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
+/* =========================================================
+   Fix: prevent horizontal scroll on mobile
+   ========================================================= */
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-#order-modal .modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(2px);
+/* Universal safety */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-#order-modal .modal-box {
-  position: relative;
-  background: #fff;
-  border-radius: 18px;
-  padding: 24px 20px;
-  max-width: 340px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-  animation: pop .25s ease;
+/* Media elements */
+img, svg, video, canvas, iframe {
+  max-width: 100%;
+  height: auto;
 }
 
-#order-modal h2 {
-  margin: 0 0 12px;
-  font-size: 20px;
-  color: #3f3a4f;
+/* Common layout containers */
+header, main, section, footer,
+.container, .wrap, .wrapper,
+.hero, .hero-wrap,
+.banner, .featured, .featured-card,
+.carousel, .slider {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-#order-modal p {
-  font-size: 14px;
-  line-height: 1.7;
-  color: #555;
-  white-space: pre-line;
+/* Fix common offender: 100vw with padding */
+.fullwidth {
+  width: 100%;
 }
 
-#order-modal button {
-  margin-top: 16px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  background: linear-gradient(135deg,#ffe38a,#f5b944);
-  box-shadow: 0 6px 16px rgba(240,188,62,.35);
-}
-
-@keyframes pop {
-  from { transform: scale(.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+/* Mobile specific */
+@media (max-width: 768px) {
+  body {
+    overscroll-behavior-x: none;
+  }
 }
