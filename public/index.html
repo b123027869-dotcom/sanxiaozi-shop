@@ -160,17 +160,19 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 
 .hero-banner{
   position:relative;
-  border-radius:22px;
-  overflow:hidden; /* ✅ 不讓 slide 跑出去 */
+  border-radius:26px;          /* 圓角稍微更大 */
+  overflow:hidden;
   border:1px solid rgba(188,220,255,.75);
   background:linear-gradient(180deg,#ffffff,#fffdf3);
-  box-shadow:0 10px 28px rgba(118,165,228,.18);
-  height:420px;
+  box-shadow:0 14px 36px rgba(118,165,228,.22);
+
+  height:500px;                /* ⭐ 框架整體變高（上下變大） */
+  padding:20px;                /* ⭐ 框架「內距」變大（四邊留白） */
+
   display:flex;
   flex-direction:column;
   align-self:start;
-}
-.hero-banner-slides{
+}des{
   position:relative;
   flex:1;
   min-height:0;
@@ -772,7 +774,9 @@ footer{
           </div>
 
           <div class="hero-left-note">
+		  <br />
             喜歡的商品都可以先加入購物車， 接著在「結帳區」一次填寫收件資料就可以囉！<br />
+			對商品有疑慮,可以通過下方的官方 L I N E連結像我們詢問索取實圖<br />
 			訂單成立後，我們會依序為你準備出貨<br />
 			有需要確認的地方也會主動與你聯絡，謝謝你的耐心等待 🤍
           </div>
@@ -967,7 +971,6 @@ footer{
       </p>
       <ul>
         <li>通知你「訂單成立 / 出貨 / 到店提醒」</li>
-        <li>偶爾分享新品或折扣（可以請我們停止通知）</li>
       </ul>
 
       <form id="checkoutForm">
@@ -1060,10 +1063,6 @@ footer{
           <textarea id="checkoutNote" placeholder="例如：希望盡量幫我在 18:00 前送達，或是其他小提醒。"></textarea>
         </div>
 
-        <div class="form-note">
-          ※ 目前為測試版：按下送出後，會在系統中建立一筆訂單紀錄，<br />
-          若是正式營運前的測試，可以隨意多試幾次沒關係。
-        </div>
 
         <div class="form-actions">
           <button type="submit" class="btn-primary">送出訂單</button>
@@ -1196,10 +1195,6 @@ footer{
         <span>輸入電話與訂單編號，自行查看訂單狀態</span>
       </h3>
 
-      <p>
-        之後真正上線時，顧客可以在這裡用：<br />
-        <strong>手機號碼 + 訂單編號</strong> 查詢自己的訂單，不需要登入會員。
-      </p>
 
       <form id="orderQueryForm">
         <div class="form-row">
@@ -1250,7 +1245,6 @@ footer{
 
       <ul>
         <li>親自挑選、實拍實用，不只看廠商照片。</li>
-        <li>以奶油黃、奶茶色、木頭色等柔和色系為主，讓空間更舒服。</li>
         <li>價格設定在「自己也會願意買」的範圍內。</li>
       </ul>
 
