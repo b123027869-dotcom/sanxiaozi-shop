@@ -1563,11 +1563,16 @@ if (statusVal !== 'all') {
         optDefault.textContent = '使用主圖';
         select.appendChild(optDefault);
 
-        currentDetailImages.forEach((url, index) => {
-          const opt = document.createElement('option');
-          opt.value = url;
-          opt.textContent = `圖片${index + 1}`;
-          select.appendChild(opt);
+currentDetailImages.forEach((url) => {
+  const opt = document.createElement('option');
+  opt.value = url;
+
+  // 取出圖片檔名（從網址最後一段）
+  const filename = url.split('/').pop();
+
+  opt.textContent = filename;
+  select.appendChild(opt);
+
         });
 
         if (selectedBefore) select.value = selectedBefore;
@@ -1703,12 +1708,21 @@ if (statusVal !== 'all') {
 
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const ext = file.name.split('.').pop();
-          const fileName =
-            Date.now().toString() +
-            '-' + Math.random().toString(36).slice(2, 8) +
-            '-' + i +
-            '.' + ext;
+          
+// 取副檔名
+const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+
+// 取原始檔名（不含副檔名）並做安全化（避免空白/奇怪符號）
+const originalBase = file.name.replace(/\.[^/.]+$/, '');
+const safeBase = originalBase
+  .trim()
+  .replace(/\s+/g, '_')                 // 空白變底線
+  .replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '') // 只保留英數/中文/_/-
+  .slice(0, 40) || 'image';
+
+// 檔名：時間戳 + 原始名 + index（可讀、也不太會撞名）
+const fileName = `${Date.now()}-${safeBase}-${i}.${ext}`;
+
 
           const filePath = 'detail/' + fileName;
 
