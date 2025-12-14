@@ -11,3 +11,12 @@ Thumbs.db
 # big local image folders (do NOT upload)
 images/
 images2-帆布袋/
+
+.env
+node_modules/
+*.db
+*.db-shm
+*.db-wal
+*.log
+Thumbs.db
+.DS_Store
