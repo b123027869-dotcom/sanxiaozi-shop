@@ -1,28 +1,2530 @@
-<!-- 已幫你調整 Hero / 輪播區 -->
-<!-- 框架放大、留白增加、文案修正 -->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>三小隻日常百貨｜療癒生活百貨</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<style>
-.hero-wrapper {
-  padding: 56px 40px;
+  <!--
+    =========================
+    版型說明
+    =========================
+    - 單檔靜態頁（HTML + CSS + JS）
+    - 商品資料：由後端 GET /api/products 提供
+    - 建立訂單：POST /api/orders
+    - 圖片：Supabase Storage Public Bucket
+    - 功能：分類、搜尋、商品詳情、加入購物車、結帳、訂單查詢（前端模板）
+  -->
+
+  <style>
+/* =========================================================
+  0) Reset / Base
+========================================================= */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden;}
+html{scroll-padding-top:140px;}
+body{
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;
+  line-height:1.6;
+  color:#3f3a4f;
+  background:linear-gradient(180deg,#ffffff 0%,#fff6d3 30%,#e6f2ff 90%);
+}
+a{text-decoration:none;color:inherit}
+
+/* =========================================================
+  1) Header / Nav
+========================================================= */
+header{
+  position:sticky;top:0;z-index:10;
+  background:rgba(255,255,255,.92);
+  border-bottom:1px solid rgba(188,220,255,.8);
+  backdrop-filter:blur(8px);
+}
+.nav{
+  max-width:1100px;margin:8px auto;
+  padding:10px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgba(255,229,166,.65),rgba(232,243,255,.9));
+}
+.logo{display:flex;gap:8px;font-weight:700}
+.logo-badge{
+  width:30px;height:30px;border-radius:50%;
+  background:radial-gradient(circle,#fff,#ffe9a7 45%,#ffd26b);
+  display:flex;align-items:center;justify-content:center;
+}
+.nav-links{
+  display:flex; gap:14px; align-items:center;
+  font-size:13px;
+}
+.nav-links a{
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.55);
+  border:1px solid rgba(188,220,255,.7);
+}
+.nav-action{display:flex; align-items:center; gap:10px;}
+
+/* =========================================================
+  2) Buttons
+========================================================= */
+.btn-primary{
+  padding:6px 14px;border-radius:999px;
+  background:linear-gradient(135deg,#ffe38a,#f5b944);
+  border:none;cursor:pointer;
+  box-shadow:0 4px 12px rgba(240,188,62,.45);
+}
+.btn-secondary{
+  padding:6px 12px;border-radius:999px;
+  border:1px solid #bcdcff;
+  background:#e8f3ff;
 }
 
-@media (max-width: 768px) {
-  .hero-wrapper {
-    padding: 44px 22px;
+/* =========================================================
+  3) Layout
+========================================================= */
+main{max-width:1100px;margin:0 auto;padding:16px}
+
+/* =========================================================
+  4) Hero
+========================================================= */
+.hero{
+  margin-top:10px;
+  background:linear-gradient(180deg,#fffdf3, #ffffff);
+  border:1px solid rgba(188,220,255,.7);
+  border-radius:22px;
+  padding:16px;
+  box-shadow:0 10px 28px rgba(118,165,228,.18);
+  position:relative;
+  isolation:isolate; /* ✅ 避免輪播圖層跑到下面區塊 */
+  z-index:1;
+  min-height: 520px;   /* ← 你可以試 500 / 540 / 580 */
+  padding: 24px;       /* 讓裡面更舒服 */
+}
+.hero-top{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap;
+}
+.hero-search{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid rgba(188,220,255,.9);
+  box-shadow:0 6px 16px rgba(118,165,228,.12);
+  min-width:280px;
+}
+.hero-search input{
+  border:none; outline:none; width:100%;
+  font-size:13px; background:transparent;
+}
+.hero-main{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:1.2fr .9fr;
+  gap:18px;
+  align-items:start; /* ✅ 右側輪播貼齊上方 */
+}
+@media(max-width:900px){
+  .hero-main{grid-template-columns:1fr;}
+}
+
+.hero-left-title{font-size:22px;font-weight:800; letter-spacing:.2px;}
+.hero-left-sub{margin-top:6px; font-size:13px; color:#6c6480;}
+.hero-benefits-row{margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;}
+.hero-benefit{
+  font-size:13px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff6d3;
+  border:1px dashed #f0d9a4;
+  color:#7a5c3a;
+}
+.hero-actions-row{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;}
+.hero-primary-btn{
+  padding:10px 14px;border-radius:999px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#ffe38a,#f5b944);
+  box-shadow:0 6px 16px rgba(240,188,62,.35);
+  font-weight:700;
+}
+.hero-secondary-btn{
+  padding:10px 14px;border-radius:999px;cursor:pointer;
+  background:#e8f3ff; border:1px solid #bcdcff;
+}
+.hero-left-note{margin-top:10px; font-size:13.5px; color:#5c452b; line-height:1.75;}
+
+/* =========================================================
+  5) Hero Banner (Right side carousel) - ✅ 最終乾淨版
+========================================================= */
+.hero-banner-badge{ display:none !important; } /* 你說不要顯示 9折/95折 */
+
+.hero-banner{
+  position:relative;
+  border-radius:22px;
+  overflow:hidden; /* ✅ 不讓 slide 跑出去 */
+  border:1px solid rgba(188,220,255,.75);
+  background:linear-gradient(180deg,#ffffff,#fffdf3);
+  box-shadow:0 10px 28px rgba(118,165,228,.18);
+  height:420px;
+  display:flex;
+  flex-direction:column;
+  align-self:start;
+}
+.hero-banner-slides{
+  position:relative;
+  flex:1;
+  min-height:0;
+}
+.hero-banner-slide{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(6px);
+  transition:opacity .35s ease, transform .35s ease;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.hero-banner-slide.active{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0);
+}
+.hero-banner-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.hero-banner-tag{
+  display:inline-flex;
+  font-size:13px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff6d3;
+  border:1px dashed #f0d9a4;
+  color:#7a5c3a;
+  font-weight:800;
+}
+.hero-banner-title{
+  margin-top:8px;
+  font-size:16px;
+  font-weight:900;
+  color:#3f3a4f;
+}
+.hero-banner-sub{
+  margin-top:6px;
+  font-size:13px;
+  color:#6c6480;
+  line-height:1.7;
+}
+
+
+
+
+/* ✅ Hero 輪播主圖：填滿、不留白（電商 Banner 標準） */
+.hero-banner-media img{
+  width:100%;
+  height:100%;
+  object-fit:cover;   /* ← 關鍵只有這行 */
+  display:block;
+  background:#fff;
+}
+
+  margin-top:auto;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.hero-banner-cta button{
+  padding:9px 12px;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  font-weight:900;
+}
+.hero-banner-cta .cta-primary{
+  background:linear-gradient(135deg,#ffe38a,#f5b944);
+  box-shadow:0 6px 16px rgba(240,188,62,.25);
+}
+.hero-banner-cta .cta-secondary{
+  background:#e8f3ff;
+  border:1px solid #bcdcff;
+}
+.hero-banner-dots-row{
+  flex:0 0 auto;
+  padding:0 14px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.hero-banner-hint{font-size:11px;color:#9a7641;}
+.hero-dots{display:flex;gap:8px}
+.hero-dot{
+  width:10px;height:10px;
+  border-radius:999px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#ffffff;
+  cursor:pointer;
+  padding:0;
+}
+.hero-dot.active{
+  background:#f5b944;
+  border-color:#f0d9a4;
+  box-shadow:0 0 0 3px rgba(255,210,96,.25);
+}
+@media(max-width:900px){ .hero-banner{height:300px;} }
+@media(max-width:520px){
+  .hero-banner-media{aspect-ratio:4/3;}
+  .hero-banner-cta button{width:100%;}
+}
+
+
+
+/* ✅ 強制 Hero 輪播主圖 1:1（放在 CSS 最底下） */
+.hero-banner-media{
+  aspect-ratio: 1 / 1 !important;
+   max-height: 230px;       /* ⭐ 關鍵：限制圖片區高度 */
+    margin: 0 auto;          /* 置中，看起來更精緻 */
+}
+.hero-banner-media img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;  /* 不留白，填滿 */
+  object-position: center !important;
+}
+
+
+
+/* =========================================================
+  6) Section / Category
+========================================================= */
+.section-title{
+  margin-top:22px;
+  font-size:16px; font-weight:800;
+  display:flex; flex-direction:column; gap:4px;
+}
+.section-title span{
+  font-size:13px; font-weight:500; color:#7a5c3a;
+}
+.category-row{
+  margin-top:10px;
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.category-chip{
+  cursor:pointer;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#fff;
+  font-size:13px;
+}
+.category-chip.active{
+  background:#fff6d3;
+  border-color:#f0d9a4;
+  box-shadow:0 4px 12px rgba(240,188,62,.18);
+}
+
+/* =========================================================
+  7) Product Grid
+========================================================= */
+.product-grid{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:14px;
+}
+@media(max-width:768px){
+  .product-grid{grid-template-columns:repeat(2,1fr)}
+}
+.product-card{
+  position:relative;
+  background:#fff;
+  border:1px solid rgba(188,220,255,.8);
+  border-radius:14px;
+  padding:8px;
+  box-shadow:0 10px 28px rgba(118,165,228,.25);
+  transition:.15s;
+}
+.product-card:hover{transform:translateY(-3px)}
+
+.product-tag{
+  position:absolute; top:10px; left:10px;
+  padding:4px 8px; border-radius:999px;
+  font-size:11px; color:#7a5c3a;
+  background:#fff6d3;
+  border:1px dashed #f0d9a4;
+}
+
+/* ✅ 商品圖片保護 */
+.product-img{
+  position:relative;
+  padding-top:100%;
+  background:#fff !important;
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,.06);
+}
+.product-img img{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  filter:none !important;
+  background:#fff !important;
+}
+
+.product-name{margin-top:8px;font-size:13px;font-weight:800;}
+.product-bottom{margin-top:8px; display:flex; flex-direction:column; gap:8px;}
+.product-price-row{display:flex; align-items:center; justify-content:space-between;}
+.product-price{font-weight:800;}
+.product-like-btn{
+  width:34px;height:34px;border-radius:999px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#fff;
+  cursor:pointer;
+}
+.product-like-btn.active{border-color:#ffb3c7;}
+
+.card-spec-row{display:flex; gap:6px; flex-wrap:wrap;}
+.card-spec-btn{
+  padding:6px 10px; border-radius:999px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#fff; cursor:pointer; font-size:13px;
+}
+.card-spec-btn.active{
+  background:#e8f3ff;
+  border-color:#9fd0ff;
+}
+.card-action-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.qty-control{display:flex; align-items:center; gap:6px;}
+.qty-btn{
+  width:30px; height:30px; border-radius:10px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#fff; cursor:pointer;
+}
+.qty-input{
+  width:44px; height:30px; text-align:center;
+  border-radius:10px;
+  border:1px solid rgba(188,220,255,.9);
+  outline:none;
+}
+.btn-cart{
+  padding:8px 12px; border-radius:12px; cursor:pointer;
+  border:none;
+  background:linear-gradient(135deg,#ffe38a,#f5b944);
+  box-shadow:0 6px 16px rgba(240,188,62,.25);
+  font-weight:800;
+}
+
+/* =========================================================
+  8) Product Detail
+========================================================= */
+.product-detail{display:none;}
+.pd-layout{
+  display:grid;
+  grid-template-columns:1.4fr 1.1fr;
+  gap:20px;
+}
+@media(max-width:768px){
+  .pd-layout{grid-template-columns:1fr}
+}
+.pd-images{
+  background:#fff !important;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+.pd-main-img{background:#fff !important;padding:10px;}
+.pd-main-img img{
+  max-width:100%;
+  max-height:520px;
+  object-fit:contain;
+  filter:none !important;
+}
+.pd-thumb-btn{
+  width:90px;height:90px;
+  border-radius:10px;
+  background:#fff !important;
+  border:2px solid rgba(0,0,0,.08);
+  overflow:hidden;
+}
+.pd-thumb-btn img{width:100%;height:100%;object-fit:cover;}
+.pd-thumb-btn.active{
+  border-color:#ffd260;
+  box-shadow:0 0 0 3px rgba(255,210,96,.35);
+}
+.pd-info-title{font-size:18px;font-weight:900;}
+.pd-info-sub{margin-top:4px;font-size:13px;color:#6c6480;}
+.pd-price{margin-top:10px;font-size:16px;font-weight:900;}
+.pd-price span{font-size:18px;}
+.pd-spec-title{margin-top:12px;font-size:13px;font-weight:800;}
+.pd-spec-options{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}
+.pd-spec-btn{
+  padding:8px 12px; border-radius:999px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#fff; cursor:pointer; font-size:13px;
+}
+.pd-spec-btn.active{
+  background:#fff6d3;
+  border-color:#f0d9a4;
+}
+.pd-thumbs{
+  display:flex; gap:10px; flex-wrap:wrap;
+  padding:10px;
+  border-top:1px solid rgba(0,0,0,.06);
+}
+.pd-desc-detail{margin-top:12px;font-size:13px;color:#4f3b2a; line-height:1.75;}
+
+/* =========================================================
+  9) Cards / Sections
+========================================================= */
+.card{
+  margin-top:26px;
+  background:#fff;
+  border-radius:22px;
+  padding:16px;
+  box-shadow:0 10px 28px rgba(118,165,228,.2);
+}
+
+/* =========================================================
+  10) Forms
+========================================================= */
+.form-row{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media(max-width:768px){
+  .form-row{grid-template-columns:1fr;}
+}
+label{display:block; font-size:13px; font-weight:800; margin:10px 0 6px;}
+input, select, textarea{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(188,220,255,.9);
+  outline:none;
+  background:#fff;
+  font-size:13px;
+}
+textarea{min-height:90px; resize:vertical;}
+
+.field-error{margin-top:6px;font-size:13px;color:#c0392b;display:none}
+.field-ok{margin-top:6px;font-size:13px;color:#2f6b3f;display:none}
+.form-hint{margin-top:6px;font-size:13px;color:#9a7641;}
+.form-note{margin-top:10px;font-size:13px;color:#7a5c3a;}
+.form-actions{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+
+/* =========================================================
+  11) Lightbox
+========================================================= */
+.lb{
+  position:fixed; inset:0;
+  display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,.65);
+  z-index:9999;
+  padding:18px;
+}
+.lb.open{display:flex;}
+.lb-stage{
+  max-width:min(1000px, 92vw);
+  max-height:82vh;
+  background:#111;
+  border-radius:18px;
+  padding:10px;
+  display:flex; align-items:center; justify-content:center;
+}
+.lb-stage img{
+  max-width:100%;
+  max-height:78vh;
+  object-fit:contain;
+  border-radius:12px;
+  background:#fff;
+}
+.lb-close{
+  position:absolute; top:14px; right:14px;
+  width:40px; height:40px;
+  border-radius:999px;
+  border:none; cursor:pointer;
+  background:#fff;
+  font-size:18px;
+}
+.lb-nav{
+  position:absolute;
+  top:50%; transform:translateY(-50%);
+  width:44px; height:44px;
+  border-radius:999px;
+  border:none; cursor:pointer;
+  background:#fff;
+  font-size:26px;
+  line-height:44px;
+}
+.lb-prev{left:14px;}
+.lb-next{right:14px;}
+.lb-hint{
+  position:absolute; bottom:14px; left:50%;
+  transform:translateX(-50%);
+  font-size:13px;
+  color:#fff;
+  opacity:.9;
+  text-align:center;
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(0,0,0,.35);
+}
+
+/* =========================================================
+  12) Footer
+========================================================= */
+footer{
+  margin-top:30px;
+  padding:16px;
+  font-size:11px;
+  text-align:center;
+  color:#9aa2bf;
+}
+
+/* =========================================================
+  13) 右下角裝飾（你有 HTML 但沒 CSS，不寫也不影響功能）
+========================================================= */
+.sxz-cloud-buddies{position:fixed;right:10px;bottom:10px;pointer-events:none;opacity:.25}
+  
+/* =========================================================
+  官網付款方式公告（可愛提示）
+========================================================= */
+.notice-cod{
+  margin-top:14px;
+  padding:14px 16px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#fff7dc,#fff1c6);
+  border:1px dashed #f0d9a4;
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  box-shadow:0 6px 16px rgba(240,188,62,.18);
+}
+
+.notice-icon{
+  font-size:28px;
+  line-height:1;
+  filter:drop-shadow(0 2px 0 rgba(255,255,255,.9));
+}
+
+.notice-content{flex:1;}
+
+.notice-title{
+  font-size:15px;
+  font-weight:900;
+  color:#7a5c3a;
+  margin-bottom:4px;
+}
+
+.notice-text{
+  font-size:14px;              /* 字體放大 */
+  line-height:1.7;
+  color:#5c452b;
+}
+
+.notice-text strong{color:#d35400;}
+
+.notice-shopee-btn{
+  margin-top:10px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 14px;
+  border-radius:999px;
+  background:#ffefe6;
+  border:1px solid #ffb08a;
+  color:#b8481e;
+  font-size:13px;
+  font-weight:900;
+  text-decoration:none;
+  transition:transform .15s, box-shadow .15s;
+  animation: sxz-bounce 2.2s ease-in-out infinite;
+}
+
+.notice-shopee-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 14px rgba(255,120,60,.25);
+  animation-play-state:paused; /* hover 時停一下，避免晃眼 */
+}
+
+@keyframes sxz-bounce{
+  0%, 60%, 100% { transform:translateY(0); }
+  70% { transform:translateY(-3px); }
+  80% { transform:translateY(0); }
+  90% { transform:translateY(-2px); }
+}
+
+
+/* Hero feature pills bigger */
+.hero-feat, .hero-feature, .hero-pill, .hero-chip, .hero-badge{
+  font-size:14px;
+}
+
+.hero-features .chip,
+.hero-features .feat,
+.hero-features span{
+  font-size: 14px;
+}
+
+
+/* =========================================================
+  搜尋條（移到商品分類上方）
+========================================================= */
+.search-strip{
+  position:sticky;
+  top:72px;
+  z-index:50;
+  max-width:1100px;
+  margin:10px auto 10px;
+  padding:0 16px;
+}
+@media (max-width:520px){
+  .search-strip{ top:64px; }
+}
+
+/* =========================================================
+  Mobile：輪播卡片更高、更好看
+========================================================= */
+@media (max-width:520px){
+  .search-strip{ margin:10px auto 4px; }
+  .hero-banner{ height: 560px; }           /* 原本 420，手機加高 */
+  .hero-banner-media{ max-height: 320px; } /* 原本約 230，手機加高 */
+}
+
+</style>
+</head>
+
+<body>
+  <!-- =========================================================
+    Header / Navbar
+  ========================================================= -->
+  <header>
+    <div class="nav">
+      <div class="logo">
+        <div class="logo-badge">☀</div>
+        三小隻日常小物百貨
+      </div>
+
+      <nav class="nav-links" aria-label="主導覽">
+        <a href="#products">商品</a>
+        <a href="#checkout">結帳</a>
+        <a href="#order-query">訂單查詢</a>
+        <a href="#about">品牌故事</a>
+      </nav>
+
+      <div class="nav-action">
+        <button class="btn-primary" type="button" onclick="scrollToSection('cart')">
+          查看購物車（0）
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- =========================================================
+      Hero（首頁 Banner / 搜尋 / 主打輪播）
+    ========================================================= -->
+    <section class="hero" aria-label="首頁主視覺">
+      <div class="hero-top">
+        <div style="font-size:14px;color:#9a7641;">
+          歡迎來到 <strong>三小隻日常百貨</strong>
+        </div>
+
+        </div>
+
+      <div class="hero-main">
+        <div>
+          <div class="hero-left-title">把喜歡的可愛，都放進日常裡。 ♡</div>
+          <div class="hero-left-sub">
+            杯子、抱枕、小托盤、桌上小物、生活用品，可愛不是裝飾，是生活必需品。
+          </div>
+
+          <div class="hero-benefits-row">
+            <div class="hero-benefit">滿 NT$699 超商免運</div>
+            <div class="hero-benefit">無需註冊會員，一次填寫就能下單</div>
+            <div class="hero-benefit">留 <span class="hero-pill-text">
+本網站暫不支持<strong style="font-weight:900;">貨到付款</strong>，
+<a href="https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263"
+   target="_blank"
+   style="color:#ee4d2d;font-weight:900;text-decoration:underline;">
+前往蝦皮可貨到付款
+</a>
+</span></div>
+          </div>
+
+          <div class="hero-actions-row">
+            <button class="hero-primary-btn" type="button" onclick="scrollToSection('products')">
+              🛒 馬上逛全部商品
+            </button>
+            <button class="hero-secondary-btn" type="button" onclick="scrollToSection('cart')">
+              查看購物車
+            </button>
+          </div>
+
+          <div class="hero-left-note">
+            喜歡的商品都可以先加入購物車， 接著在「結帳區」一次填寫收件資料就可以囉！<br />
+			訂單成立後，我們會依序為你準備出貨<br />
+			有需要確認的地方也會主動與你聯絡，謝謝你的耐心等待 🤍
+          </div>
+        </div>
+
+        <aside class="hero-banner" aria-label="主打輪播">
+          <div class="hero-banner-slides" id="heroBannerSlides"></div>
+          <div class="hero-banner-dots-row">
+            <span class="hero-banner-hint">主打商品輪播中，可點小點切換。</span>
+            <div class="hero-dots" id="heroBannerDots"></div>
+          </div>
+        </aside>
+      </div>
+    
+    <!-- =========================================================
+      搜尋（移到商品分類上方，手機更好用）
+    ========================================================= -->
+    </div>
+
+</section>
+
+    <div class="search-strip" aria-label="商品搜尋">
+      <div class="hero-search">
+          <span class="hero-search-icon">🔍</span>
+          <input
+            id="heroSearchInput"
+            type="search"
+            placeholder="想找什麼小物？例：帆布袋、馬克杯、桌上小物…"
+          />
+        </div>
+
+
+
+    <!-- =========================================================
+      商品分類
+    ========================================================= -->
+    <section aria-label="商品分類">
+      <h3 class="section-title">
+        商品分類
+        <span>讓最喜歡的角色，陪你過每一天。</span>
+      </h3>
+
+      <div class="category-row">
+        <button class="category-chip active" type="button" data-category="all">全部</button>
+        <button class="category-chip" type="button" data-category="cup">杯盤餐具</button>
+        <button class="category-chip" type="button" data-category="room">房間佈置</button>
+        <button class="category-chip" type="button" data-category="desk">桌上小物</button>
+        <button class="category-chip" type="button" data-category="gift">送禮小物</button>
+        <button class="category-chip" type="button" data-category="life">生活用品</button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      商品列表（由 JS 動態渲染）
+    ========================================================= -->
+    <section id="products" aria-label="商品列表">
+      <h3 class="section-title">
+        精選商品
+        <span>商品列表與詳情都從同一份資料產生</span>
+      </h3>
+
+      <div class="product-grid" id="productGrid"></div>
+
+      <div id="productEmptyHint" style="
+        display:none;
+        margin-top: 10px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #fffdf5;
+        border: 1px dashed #f0d9a4;
+        font-size: 13px;
+        color: #7a5c3a;
+      ">
+        找不到符合條件的小物～🧐<br />
+        可以試試看：換個關鍵字、縮短關鍵字（例如輸入「杯」或「帆布」）。
+      </div>
+    </section>
+
+    <!-- =========================================================
+      商品詳情（點商品後顯示）
+    ========================================================= -->
+    <section class="card product-detail" id="productDetail" aria-label="商品詳情">
+      <h3 class="section-title">
+        <span id="detailTitlePrefix">商品詳情｜</span><span id="detailTitleMain"></span>
+        <span id="detailSubtitle"> </span>
+      </h3>
+
+      <div class="pd-layout">
+        <div class="pd-images">
+          <div class="pd-main-img">
+            <img id="detailMainImg" src="" alt="" />
+          </div>
+          <div class="pd-thumbs" id="detailThumbs"></div>
+        </div>
+
+        <div>
+          <div class="pd-info-title" id="detailName"></div>
+          <div class="pd-info-sub" id="detailSub"></div>
+
+          <div class="pd-price">
+            NT$ <span id="detailPrice">0</span>
+            <span id="detailPriceNote"></span>
+          </div>
+
+          <div>
+            <div class="pd-spec-title">選擇款式</div>
+            <div class="pd-spec-options" id="detailSpecs"></div>
+          </div>
+
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <div class="qty-control" id="detailQtyControl">
+              <button type="button" class="qty-btn" id="detailQtyMinus">−</button>
+              <input type="text" class="qty-input" id="detailQtyInput" value="1" />
+              <button type="button" class="qty-btn" id="detailQtyPlus">＋</button>
+            </div>
+
+            <button type="button" class="btn-primary" id="detailAddBtn">🛒 加入購物車</button>
+
+            <button type="button" class="btn-secondary btn-line" id="detailLineBtn">
+              💬 使用 LINE 聯繫小店長
+            </button>
+
+            <button type="button" class="btn-secondary" onclick="backToProducts()">
+              ← 回到商品列表
+            </button>
+          </div>
+
+          <div class="pd-desc-detail" id="detailDesc"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      購物車
+    ========================================================= -->
+    <section class="card" id="cart" aria-label="購物車">
+      <h3 class="section-title">
+        購物車
+        <span>查看你剛剛加入的小物</span>
+      </h3>
+
+      <div id="cartList" style="font-size:13px; color:#6b502c;">
+        （你的購物車目前是空的）
+      </div>
+
+      <div id="cartSummary" style="
+        margin-top:10px;
+        padding:12px 14px;
+        border-radius:14px;
+        background:#fffdf5;
+        border:1px dashed #f0d9a4;
+        font-size:13px;
+        color:#4f3b2a;
+        display:none;
+      ">
+        <div style="display:flex;justify-content:space-between;margin:4px 0;">
+          <span>小計</span><strong id="sumSubtotal">NT$ 0</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin:4px 0;">
+          <span>運費 <span style="font-size:13px;color:#9a7641;">(<strong style=\"font-weight:900;\">\1</strong>)</span></span>
+          <strong id="sumShipping">NT$ 0</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin:6px 0;border-top:1px dashed #f0d9a4;padding-top:8px;">
+          <span>總計</span><strong id="sumTotal">NT$ 0</strong>
+        </div>
+        <div id="shipHint" style="margin-top:6px;font-size:13px;color:#9a7641;"></div>
+      </div>
+
+      <div class="form-actions" style="margin-top:14px;">
+        <button type="button" class="btn-primary" onclick="scrollToSection('checkout')">
+          前往結帳
+        </button>
+        <button type="button" class="btn-secondary" onclick="backToProducts()">
+          繼續逛逛
+        </button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      結帳
+    ========================================================= -->
+    <section class="card" id="checkout" aria-label="結帳">
+      <h3 class="section-title">
+        結帳資訊（無需註冊會員）
+        <span>一次填寫，之後透過 Email / Line 通知你出貨</span>
+      </h3>
+
+      <p>
+        我們不做複雜的會員系統，只需要你在這裡填寫一次，<br />
+        就可以完成訂單。<br />
+        <strong>Email / Line ID 會用來：</strong>
+      </p>
+      <ul>
+        <li>通知你「訂單成立 / 出貨 / 到店提醒」</li>
+        <li>偶爾分享新品或折扣（可以請我們停止通知）</li>
+      </ul>
+
+      <form id="checkoutForm">
+        <div class="form-row">
+          <div>
+            <label for="checkoutName">收件人姓名（必填）</label>
+            <input type="text" id="checkoutName" required />
+          </div>
+          <div>
+            <label for="checkoutPhone">手機號碼（必填）</label>
+            <input type="tel" id="checkoutPhone" required placeholder="例：09xxxxxxxx" />
+            <div class="form-hint">之後查訂單會用到這支電話。</div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label for="checkoutEmailLocal">Email（必填）</label>
+
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input
+                type="text"
+                id="checkoutEmailLocal"
+                required
+                placeholder="例：you"
+                inputmode="email"
+                autocomplete="email"
+                style="flex:1;"
+              />
+
+              <select id="checkoutEmailDomain" aria-label="選擇常用信箱尾碼" style="width:190px;">
+                <option value="gmail.com">gmail.com</option>
+                <option value="yahoo.com">yahoo.com</option>
+                <option value="hotmail.com">hotmail.com</option>
+                <option value="outlook.com">outlook.com</option>
+                <option value="icloud.com">icloud.com</option>
+                <option value="custom">其他…</option>
+              </select>
+            </div>
+
+            <input
+              type="text"
+              id="checkoutEmailCustom"
+              placeholder="自訂網域，例如 example.com"
+              inputmode="email"
+              style="margin-top:8px;display:none;"
+            />
+
+            <!-- 送出時會把組合後的完整 Email 放進這裡（保留你原本 payload 讀取 checkoutEmail 的寫法） -->
+            <input type="hidden" id="checkoutEmail" />
+
+            <div class="form-hint" id="emailHint">會寄送訂單明細與出貨通知。</div>
+          </div>
+          <div>
+            <label for="checkoutLine">Line ID（選填）</label>
+            <input type="text" id="checkoutLine" placeholder="若填寫，將優先用 Line 通知" />
+          </div>
+        </div>
+
+        <div>
+          <label for="checkoutAddress">收件地址 / 超商門市（必填）</label>
+          <input type="text" id="checkoutAddress" placeholder="超商取貨可填：超商 + 門市名稱" />
+        
+          <div class="form-hint" id="checkoutAddressHint">請填寫：超商（7-11/全家）請填「門市名稱」；宅配請填完整地址。</div>
+</div>
+
+        <div class="form-row">
+          <div>
+            <label for="checkoutShip">配送方式</label>
+            <select id="checkoutShip">
+              <option value="711">超商取貨（7-11）</option>
+              <option value="family">超商取貨（全家）</option>
+              <option value="home">宅配到府</option>
+            </select>
+          </div>
+          <div>
+            <label for="checkoutPay">付款方式</label>
+            <select id="checkoutPay">
+              <option value="card">信用卡（線上付款）</option>
+              <option value="linepay">LINE Pay（線上付款）</option>
+              <option value="cod">貨到付款（改走蝦皮下單）</option>
+              <option value="transfer" disabled>銀行轉帳（暫不開放）</option>
+            </select>
+            <div class="form-hint">貨到付款會引導你到蝦皮下單；銀行轉帳暫不開放（之後改虛擬帳戶）。</div>
+          </div>
+        </div>
+
+        <div>
+          <label for="checkoutNote">備註（選填）</label>
+          <textarea id="checkoutNote" placeholder="例如：希望盡量幫我在 18:00 前送達，或是其他小提醒。"></textarea>
+        </div>
+
+        <div class="form-note">
+          ※ 目前為測試版：按下送出後，會在系統中建立一筆訂單紀錄，<br />
+          若是正式營運前的測試，可以隨意多試幾次沒關係。
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">送出訂單</button>
+          <button type="button" class="btn-secondary" onclick="backToProducts()">
+            還想再多逛一下
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- =========================================================
+      聯絡 / 出貨說明
+    ========================================================= -->
+    <section class="card" id="service-info" aria-label="聯絡與出貨說明">
+      <h3 class="section-title">
+        聯絡小店長 & 出貨說明
+        <span>有問題、想追蹤訂單都可以找我們</span>
+      </h3>
+
+      <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;">
+        <div style="flex:2;min-width:220px;font-size:13px;color:#6b502c;">
+          <p style="margin-bottom:6px;">
+            有任何商品問題、想確認庫存、修改訂單資料，<br />
+            都可以透過 <strong>官方 LINE</strong> 或 <strong>蝦皮聊聊</strong> 找三小隻小店長。
+          </p>
+
+          <p style="margin-bottom:4px;">
+            <strong>客服時間：</strong><br />
+            平日：<span>13:00 – 22:00</span><br />
+            假日：視出貨狀況不定時回覆（通常也會偷看訊息 😆）
+          </p>
+
+          <p style="margin-bottom:4px;">
+            <strong>出貨說明：</strong><br />
+            ・下單後約 <strong>1–3 個工作天</strong> 出貨（遇連假可能順延）<br />
+            ・超商取貨約再 1–3 天到店，宅配約 1–3 天送達<br />
+            ・若有急件或指定時間，可以先 LINE 私訊討論<br />
+            ・較長備貨為 12-15 天出貨
+          </p>
+
+          <p style="margin-top:6px;">
+            <strong>小提醒：</strong>結帳完成後，<br />
+            也可以 Screenshot 訂單 + 加入 LINE，方便我們協助查詢與追蹤。
+          </p>
+        </div>
+
+        <div style="
+          display:inline-block;
+          padding:12px 14px;
+          border-radius:16px;
+          background:#fffdf7;
+          border:1px solid #f0d9a4;
+          box-shadow:0 2px 4px rgba(0,0,0,0.04);
+        ">
+          <img
+            src="basic-images/line-qr.png"
+            alt="官方 LINE QR Code"
+            style="width:140px;height:140px;border-radius:12px;"
+          />
+          <div style="margin-top:8px;font-size:14px;color:#6b502c;">
+            官方 LINE ID：<br />
+            <strong style="font-size:17px;color:#00b43c;">@301gfuh</strong>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+          <a
+            href="https://lin.ee/FDKoij6"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="
+              display:inline-flex;
+              align-items:center;
+              gap:6px;
+              padding:8px 14px;
+              border-radius:999px;
+              background:#e4ffe9;
+              border:1px solid #8cd49d;
+              font-size:13px;
+              color:#2f6b3f;
+              text-decoration:none;
+              font-weight:600;
+            "
+          >
+            <span style="
+              width:20px;height:20px;border-radius:999px;
+              background:#00b43c;color:#fff;
+              display:flex;align-items:center;justify-content:center;
+              font-size:13px;
+            ">L</span>
+            <span>加入 LINE 詢問 / 追蹤訂單</span>
+          </a>
+
+          <a
+            href="https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="
+              display:inline-flex;
+              align-items:center;
+              gap:6px;
+              padding:8px 14px;
+              border-radius:999px;
+              background:#fff0e8;
+              border:1px solid #f7a27a;
+              font-size:13px;
+              color:#b8481e;
+              text-decoration:none;
+              font-weight:600;
+            "
+          >
+            <span style="
+              width:20px;height:20px;border-radius:999px;
+              background:#ff5b1f;color:#fff;
+              display:flex;align-items:center;justify-content:center;
+              font-size:13px;
+            ">🛒</span>
+            <span>前往蝦皮賣場看看</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      訂單查詢
+    ========================================================= -->
+    <section class="card" id="order-query" aria-label="訂單查詢">
+      <h3 class="section-title">
+        訂單查詢
+        <span>輸入電話與訂單編號，自行查看訂單狀態</span>
+      </h3>
+
+      <p>
+        之後真正上線時，顧客可以在這裡用：<br />
+        <strong>手機號碼 + 訂單編號</strong> 查詢自己的訂單，不需要登入會員。
+      </p>
+
+      <form id="orderQueryForm">
+        <div class="form-row">
+          <div>
+            <label for="queryPhone">手機號碼</label>
+            <input type="tel" id="queryPhone" required placeholder="例：09xxxxxxxx" />
+          </div>
+          <div>
+            <label for="queryOrderId">訂單編號</label>
+            <input type="text" id="queryOrderId" required placeholder="例：ND20250001" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">查詢訂單</button>
+          <div class="form-hint"></div>
+        </div>
+      </form>
+
+      <div class="order-result" id="orderResult"></div>
+    </section>
+
+    <!-- =========================================================
+      品牌故事
+    ========================================================= -->
+    <section class="card" id="about" aria-label="品牌故事">
+      <h3 class="section-title">
+        品牌小故事
+        <span>讓喜歡的可愛，住進你的日常</span>
+      </h3>
+
+      <p>
+        三小隻日常百貨，是從一間小房間慢慢長出來的小小選物店。<br />
+        起初只是想讓生活變得柔軟一點——也許是一個奶油色的杯子、<br />
+        一個可愛角色的小擺飾、或是一個放在桌上就會讓心情靜下來的小物。
+      </p>
+
+      <p>
+        漸漸地我們發現，<strong>可愛不是多餘，而是一種能讓日子變溫柔的力量。</strong><br />
+        喜歡的角色陪著你、順眼的顏色點亮房間、好用的小物讓生活更輕鬆，<br />
+        那些微小、卻真實的美好，就是三小隻存在的原因。
+      </p>
+
+      <p>
+        所以我們把動畫周邊、生活小物與療癒選物集合在一起，精挑細選，<br />
+        只希望每一樣送到你手上的，不只是物品，而是一份剛剛好的陪伴。
+      </p>
+
+      <ul>
+        <li>親自挑選、實拍實用，不只看廠商照片。</li>
+        <li>以奶油黃、奶茶色、木頭色等柔和色系為主，讓空間更舒服。</li>
+        <li>價格設定在「自己也會願意買」的範圍內。</li>
+      </ul>
+
+      <p>
+        希望你打開包裹的那一刻，能感受到那一點點溫暖：<br />
+        <strong>啊，今天的生活，又多了一點喜歡的理由。🧈</strong>
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    三小隻日常百貨｜療癒生活百貨 · 無會員制電商網站示意版型<br />
+    聯絡信箱:b123027869@gmail.com<br />
+	連絡電話:0985675489
+	地址:高雄市彌陀區海尾里海尾路62號之1
+  </footer>
+
+  <!-- 右下角裝飾 -->
+  <div class="sxz-cloud-buddies" aria-hidden="true">
+    <div class="sxz-cloud"></div>
+    <div class="sxz-buddy sxz-buddy-1"></div>
+    <div class="sxz-buddy sxz-buddy-2"></div>
+    <div class="sxz-buddy sxz-buddy-3"></div>
+    <div class="sxz-stick"></div>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="imgLightbox" class="lb" aria-hidden="true">
+    <button class="lb-close" id="lbClose" type="button" aria-label="關閉">✕</button>
+    <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="上一張">‹</button>
+    <div class="lb-stage" id="lbStage">
+      <img id="lbImg" alt="商品圖片放大" />
+    </div>
+    <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="下一張">›</button>
+    <div class="lb-hint" id="lbHint">點擊空白處或按 ESC 關閉｜左右鍵切換｜手機可左右滑</div>
+  </div>
+
+  <script>
+    /* =========================================================
+      A) 常數設定（圖片 / API）
+    ========================================================= */
+    const SUPABASE_IMG_BASE =
+      "https://ckqdimygblkasofycwvr.supabase.co/storage/v1/object/public/product-images/";
+
+    function resolveImgUrl(url) {
+      if (!url) return "";
+      if (/^https?:\/\//i.test(url)) return url;
+      return SUPABASE_IMG_BASE + url.replace(/^\/+/, "");
+    }
+
+// Shopee 下單連結（用於「貨到付款」引導）
+    const SHOPEE_COD_URL = "https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263";
+
+    const API_BASE =
+      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? 'http://localhost:3000'
+        : location.origin;
+
+    async function apiPost(path, data) {
+      const res = await fetch(API_BASE + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error("API 錯誤：" + res.status + " " + text);
+      }
+      return res.json();
+    }
+
+    async function apiGet(path) {
+      const res = await fetch(API_BASE + path);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error("API 錯誤：" + res.status + " " + text);
+      }
+      return res.json();
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
+
+    /* =========================================================
+      B) 商品資料與篩選狀態
+    ========================================================= */
+    let products = [];
+    let currentCategory = "all";
+    let currentKeyword = "";
+
+    const productGrid = document.getElementById("productGrid");
+    const productEmptyHint = document.getElementById("productEmptyHint");
+    const heroSearchInput = document.getElementById("heroSearchInput");
+
+    async function loadProducts() {
+      try {
+        const data = await apiGet("/api/products");
+        const list = data.products || data.data || [];
+        products = Array.isArray(list) ? list : [];
+      } catch (err) {
+        console.error("載入商品失敗", err);
+        products = [];
+        alert("載入商品失敗，請稍後再試一次，或確認後端 /api/products 是否有開啟。");
+      }
+    }
+
+    /* =========================================================
+      C) 分類切換
+    ========================================================= */
+    const categoryChips = document.querySelectorAll(".category-chip");
+    categoryChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        categoryChips.forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        currentCategory = chip.dataset.category || "all";
+        renderProductGrid();
+      });
+    });
+
+    /* =========================================================
+      D) 搜尋
+    ========================================================= */
+    if (heroSearchInput) {
+      heroSearchInput.addEventListener("input", () => {
+        const value = heroSearchInput.value || "";
+        currentKeyword = value;
+        renderProductGrid();
+      });
+
+      heroSearchInput.addEventListener("focus", () => {
+        scrollToSection("products");
+      });
+    }
+
+    /* =========================================================
+      E) 購物車狀態
+    ========================================================= */
+    let cartItems = [];
+    let cartCount = 0;
+    const cartBtnTop = document.querySelector(".nav-action .btn-primary");
+
+    function updateCartBtnText() {
+      if (cartBtnTop) cartBtnTop.textContent = `查看購物車（${cartCount}）`;
+    }
+
+    function calcCartTotal() {
+      return cartItems.reduce((sum, it) => {
+        const price = typeof it.price === "number" ? it.price : 0;
+        return sum + price * it.qty;
+      }, 0);
+    }
+
+    function addToCart(productId, specKey, qty) {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
+
+      const specList = product.specs || [];
+      let useSpec = specList[0];
+
+      if (specKey) {
+        const found = specList.find((s) => s.key === specKey);
+        if (found) useSpec = found;
+      }
+
+      if (!useSpec) useSpec = { key: "default", label: "預設款" };
+
+      qty = Number(qty) || 1;
+      if (qty < 1) qty = 1;
+
+      if (typeof useSpec.stock === "number") {
+        const currentInCartSpec = cartItems
+          .filter((it) => it.productId === productId && it.specKey === useSpec.key)
+          .reduce((sum, it) => sum + it.qty, 0);
+
+        if (currentInCartSpec + qty > useSpec.stock) {
+          const remain = useSpec.stock - currentInCartSpec;
+          alert(
+            `「${product.name} - ${useSpec.label}」庫存不足，` +
+            `目前最多還能加 ${remain < 0 ? 0 : remain} 件。`
+          );
+          return;
+        }
+      }
+
+      const exist = cartItems.find(
+        (item) => item.productId === productId && item.specKey === useSpec.key
+      );
+
+      if (exist) {
+        exist.qty += qty;
+      } else {
+        cartItems.push({
+          productId,
+          specKey: useSpec.key,
+          name: product.name,
+          specLabel: useSpec.label,
+          price: product.price,
+          qty,
+        });
+      }
+
+      cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
+      updateCartBtnText();
+      renderCart();
+    }
+
+    function removeCartItem(index) {
+      if (index < 0 || index >= cartItems.length) return;
+      cartItems.splice(index, 1);
+      cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
+      updateCartBtnText();
+      renderCart();
+    }
+    window.removeCartItem = removeCartItem;
+
+    function renderCart() {
+      const container = document.getElementById("cartList");
+      if (!container) return;
+
+      if (cartItems.length === 0) {
+        container.innerHTML = "（你的購物車目前是空的）";
+        updateCartSummary();
+        return;
+      }
+
+      let html = '<ul style="padding-left:18px;">';
+
+      cartItems.forEach((item, index) => {
+        const lineTotal = item.price * item.qty;
+        html += `
+          <li style="margin-bottom:4px;">
+            ${item.name}（${item.specLabel}） × ${item.qty}
+            － NT$${lineTotal}
+            <button type="button"
+              onclick="removeCartItem(${index})"
+              style="margin-left:6px;padding:2px 6px;font-size:11px;border-radius:6px;border:1px solid #e0c080;background:#fff9ec;cursor:pointer;">
+              移除
+            </button>
+          </li>
+        `;
+      });
+
+      html += "</ul>";
+      container.innerHTML = html;
+
+      updateCartSummary();
+    }
+
+    function updateCartSummary() {
+      const summary = document.getElementById("cartSummary");
+      if (!summary) return;
+
+      const subtotalEl = document.getElementById("sumSubtotal");
+      const shipEl = document.getElementById("sumShipping");
+      const totalEl = document.getElementById("sumTotal");
+      const hintEl = document.getElementById("shipHint");
+      const shipMethodEl = document.getElementById("checkoutShip");
+
+      const subtotal = calcCartTotal();
+      const freeShipThreshold = 699;
+
+      let shipping = 0;
+      const shipMethod = shipMethodEl ? shipMethodEl.value : "711";
+      if (subtotal === 0) shipping = 0;
+      else if (subtotal >= freeShipThreshold) shipping = 0;
+      else {
+        shipping =
+          shipMethod === "home" ? 100 :
+          shipMethod === "family" ? 60 :
+          60;
+      }
+
+      const total = subtotal + shipping;
+
+      summary.style.display = subtotal > 0 ? "block" : "none";
+      if (subtotalEl) subtotalEl.textContent = `NT$ ${subtotal}`;
+      if (shipEl) shipEl.textContent = `NT$ ${shipping}`;
+      if (totalEl) totalEl.textContent = `NT$ ${total}`;
+
+      if (hintEl) {
+        if (subtotal === 0) hintEl.textContent = "";
+        else if (subtotal >= freeShipThreshold) hintEl.textContent = "已達免運門檻，太棒了～🥳";
+        else hintEl.textContent = `再買 NT$ ${freeShipThreshold - subtotal} 即可免運 💛`;
+      }
+    }
+
+    /* =========================================================
+      G) 商品列表渲染
+    ========================================================= */
+    function renderProductGrid() {
+      if (!productGrid) return;
+      productGrid.innerHTML = "";
+
+      const kw = (currentKeyword || "").trim().toLowerCase();
+
+      const filtered = (products || []).filter((product) => {
+        const cats = product.categories || [];
+        if (currentCategory !== "all" && !cats.includes(currentCategory)) return false;
+        if (!kw) return true;
+
+        const text = [
+          product.name || "",
+          product.subtitle || "",
+          (product.categories || []).join(" "),
+          product.shortDesc || "",
+          product.detailHtml || "",
+          product.code || "",
+        ].join(" ").toLowerCase();
+
+        return text.includes(kw);
+      });
+
+      if (productEmptyHint) productEmptyHint.style.display = filtered.length === 0 ? "block" : "none";
+      if (filtered.length === 0) return;
+
+      filtered.forEach((product) => {
+        const cats = product.categories || [];
+        const specs = product.specs || [];
+        const firstSpec = specs[0];
+
+        const mainImgRaw =
+          product.imageUrl ||
+          (firstSpec && firstSpec.mainImg) ||
+          (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
+          "";
+
+        const mainImg = resolveImgUrl(mainImgRaw);
+
+        const article = document.createElement("article");
+        article.className = "product-card";
+        article.dataset.id = product.id;
+        article.dataset.category = cats.join(" ");
+        article.dataset.selectedSpec = firstSpec ? firstSpec.key : "";
+
+        article.innerHTML = `
+          ${product.tag ? `<div class="product-tag">${product.tag}</div>` : ""}
+          <div class="product-img" data-click="open-detail">
+            ${mainImg ? `<img src="${mainImg}" alt="${product.name}">` : ""}
+          </div>
+          <h4 class="product-name" data-click="open-detail">${product.name}</h4>
+
+          <div class="product-bottom">
+            <div class="product-price-row">
+              <div class="product-price">NT$ ${product.price}</div>
+              <button type="button" class="product-like-btn">♡</button>
+            </div>
+
+            <div class="card-spec-row">
+              ${(specs || [])
+                .map(
+                  (spec, idx) => `
+                    <button type="button"
+                      class="card-spec-btn ${idx === 0 ? "active" : ""}"
+                      data-spec-key="${spec.key}">
+                      ${spec.label}
+                    </button>
+                  `
+                )
+                .join("")}
+            </div>
+
+            <div class="card-action-row">
+              <div class="qty-control">
+                <button type="button" class="qty-btn">−</button>
+                <input type="text" class="qty-input" value="1">
+                <button type="button" class="qty-btn">＋</button>
+              </div>
+              <button type="button" class="btn-cart">🛒 加入</button>
+            </div>
+          </div>
+        `;
+
+        article.querySelectorAll('[data-click="open-detail"]').forEach((el) => {
+          el.addEventListener("click", () => openProduct(product.id));
+        });
+
+        const likeBtn = article.querySelector(".product-like-btn");
+        likeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          likeBtn.classList.toggle("active");
+          likeBtn.textContent = likeBtn.classList.contains("active") ? "❤" : "♡";
+        });
+
+        const specBtns = article.querySelectorAll(".card-spec-btn");
+        specBtns.forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            specBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            article.dataset.selectedSpec = btn.dataset.specKey || "";
+          });
+        });
+
+        const qtyInput = article.querySelector(".qty-input");
+        const qtyBtns = article.querySelectorAll(".qty-btn");
+
+        qtyBtns[0].addEventListener("click", (e) => {
+          e.stopPropagation();
+          let v = parseInt(qtyInput.value || "1", 10);
+          if (isNaN(v) || v < 1) v = 1;
+          qtyInput.value = Math.max(1, v - 1);
+        });
+
+        qtyBtns[1].addEventListener("click", (e) => {
+          e.stopPropagation();
+          let v = parseInt(qtyInput.value || "1", 10);
+          if (isNaN(v) || v < 1) v = 1;
+          qtyInput.value = v + 1;
+        });
+
+        const addBtn = article.querySelector(".btn-cart");
+        addBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const specKey = article.dataset.selectedSpec || "";
+          const qty = parseInt(qtyInput.value || "1", 10) || 1;
+          addToCart(product.id, specKey, qty);
+        });
+
+        productGrid.appendChild(article);
+      });
+    }
+
+    /* =========================================================
+      H) 商品詳情
+    ========================================================= */
+    const productDetailSection = document.getElementById("productDetail");
+    const detailTitleMain = document.getElementById("detailTitleMain");
+    const detailSubtitle = document.getElementById("detailSubtitle");
+    const detailName = document.getElementById("detailName");
+    const detailSub = document.getElementById("detailSub");
+    const detailPrice = document.getElementById("detailPrice");
+    const detailPriceNote = document.getElementById("detailPriceNote");
+    const detailMainImg = document.getElementById("detailMainImg");
+    const detailThumbs = document.getElementById("detailThumbs");
+    const detailSpecs = document.getElementById("detailSpecs");
+    const detailDesc = document.getElementById("detailDesc");
+    const detailQtyInput = document.getElementById("detailQtyInput");
+    const detailQtyMinus = document.getElementById("detailQtyMinus");
+    const detailQtyPlus = document.getElementById("detailQtyPlus");
+    const detailAddBtn = document.getElementById("detailAddBtn");
+    const detailLineBtn = document.getElementById("detailLineBtn");
+    const heroSection = document.querySelector(".hero");
+
+    let currentDetailProductId = null;
+    let currentDetailSpecKey = null;
+
+    function openProduct(productId) {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
+
+      currentDetailProductId = productId;
+
+      detailTitleMain.textContent = product.name;
+      detailSubtitle.textContent = product.subtitle ? product.subtitle : "";
+      detailName.textContent = product.name;
+      detailSub.textContent = product.subtitle || "";
+      detailPrice.textContent = product.price;
+      detailPriceNote.textContent = product.priceNote || "";
+      detailDesc.innerHTML = product.detailHtml || "";
+
+      detailSpecs.innerHTML = "";
+      (product.specs || []).forEach((spec, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pd-spec-btn" + (idx === 0 ? " active" : "");
+        btn.textContent = spec.label;
+        btn.dataset.specKey = spec.key;
+        btn.addEventListener("click", () => setDetailSpec(productId, spec.key));
+        detailSpecs.appendChild(btn);
+      });
+
+      if (product.specs && product.specs[0]) {
+        setDetailSpec(productId, product.specs[0].key);
+      }
+
+      detailQtyInput.value = "1";
+      productDetailSection.style.display = "block";
+
+      if (heroSection) heroSection.style.display = "none";
+      scrollToSection("productDetail");
+    }
+
+    function setDetailSpec(productId, specKey) {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
+
+      const specs = product.specs || [];
+      const spec = specs.find((s) => s.key === specKey) || specs[0];
+      if (!spec) return;
+
+      currentDetailSpecKey = spec.key;
+
+      const mainImgRaw =
+        spec.mainImg ||
+        product.imageUrl ||
+        (spec.thumbs && spec.thumbs[0]) ||
+        "";
+
+      const mainImg = resolveImgUrl(mainImgRaw);
+      detailMainImg.src = mainImg;
+      detailMainImg.alt = `${product.name} ${spec.label}`;
+
+      detailThumbs.innerHTML = "";
+      const thumbList = spec.thumbs && spec.thumbs.length > 0 ? spec.thumbs : [mainImgRaw];
+
+      thumbList.forEach((srcRaw, idx) => {
+        if (!srcRaw) return;
+        const src = resolveImgUrl(srcRaw);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pd-thumb-btn" + (idx === 0 ? " active" : "");
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = `${product.name} ${spec.label} 圖片`;
+
+        btn.appendChild(img);
+        btn.addEventListener("click", () => {
+          detailMainImg.src = src;
+          detailThumbs.querySelectorAll(".pd-thumb-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+
+        detailThumbs.appendChild(btn);
+      });
+
+      detailSpecs.querySelectorAll(".pd-spec-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.specKey === specKey);
+      });
+    }
+
+    function backToProducts() {
+      productDetailSection.style.display = "none";
+      if (heroSection) heroSection.style.display = "block";
+      scrollToSection("products");
+    }
+    window.backToProducts = backToProducts;
+
+    detailQtyMinus.addEventListener("click", () => {
+      let v = parseInt(detailQtyInput.value || "1", 10);
+      if (isNaN(v) || v < 1) v = 1;
+      detailQtyInput.value = Math.max(1, v - 1);
+    });
+
+    detailQtyPlus.addEventListener("click", () => {
+      let v = parseInt(detailQtyInput.value || "1", 10);
+      if (isNaN(v) || v < 1) v = 1;
+      detailQtyInput.value = v + 1;
+    });
+
+    detailAddBtn.addEventListener("click", () => {
+      if (!currentDetailProductId) return;
+      const qty = parseInt(detailQtyInput.value || "1", 10) || 1;
+      addToCart(currentDetailProductId, currentDetailSpecKey, qty);
+    });
+
+    detailLineBtn.addEventListener("click", () => {
+      window.open("https://line.me/R/ti/p/@301gfuh", "_blank");
+    });
+
+    /* =========================================================
+      I) 結帳：送出訂單
+    ========================================================= */
+    const checkoutForm = document.getElementById("checkoutForm");
+    if (checkoutForm) {
+      checkoutForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (cartItems.length === 0) {
+          alert("購物車是空的，請先選幾樣小物再來結帳唷！");
+          renderCart();
+          updateCartSummary();
+          scrollToSection("cart");
+          return;
+        }
+
+        const name = document.getElementById("checkoutName").value.trim();
+        const phone = document.getElementById("checkoutPhone").value.trim();
+        const emailLocalRaw = (document.getElementById("checkoutEmailLocal")?.value || "").trim();
+        const emailDomainSel = document.getElementById("checkoutEmailDomain")?.value || "gmail.com";
+        const emailCustomRaw = (document.getElementById("checkoutEmailCustom")?.value || "").trim();
+
+        // ✅ Email 組合：前半段 + 常用尾碼（或自訂）
+        const emailLocal = emailLocalRaw.replace(/\s+/g, "").replace(/@.*/g, "");
+        const domain = (emailDomainSel === "custom" ? emailCustomRaw : emailDomainSel)
+          .replace(/^@+/, "")
+          .replace(/\s+/g, "");
+        const email = (emailLocal && domain) ? `${emailLocal}@${domain}` : "";
+        const hiddenEmailEl = document.getElementById("checkoutEmail");
+        if (hiddenEmailEl) hiddenEmailEl.value = email;
+        const lineId = document.getElementById("checkoutLine").value.trim();
+        const address = document.getElementById("checkoutAddress").value.trim();
+        const ship = document.getElementById("checkoutShip").value;
+        const pay = document.getElementById("checkoutPay").value;
+        // ✅ 付款方式分流
+        // 1) 貨到付款：不在本站成立訂單，改引導到蝦皮下單（避免棄單造成運費損失）
+        if (pay === "cod") {
+          const ok = confirm(
+            "貨到付款目前僅提供在蝦皮下單（避免棄單造成運費損失）。\n\n" +
+            "按「確定」前往蝦皮下單；按「取消」可改選其他付款方式。"
+          );
+          if (ok) window.open(SHOPEE_COD_URL, "_blank", "noopener,noreferrer");
+          return;
+        }
+
+        // 2) 銀行轉帳：先保留但暫不開放（避免第三方詐騙）
+        if (pay === "transfer") {
+          alert("銀行轉帳目前暫不開放，之後會改成「虛擬帳戶」再上線。\n\n請先改選：信用卡 / LINE Pay，或改走蝦皮下單。");
+          return;
+        }
+
+        const note = document.getElementById("checkoutNote").value.trim();
+
+        // ✅ 基本必填
+if (!name || !phone || !email) {
+  alert("姓名、電話、Email 為必填欄位，請再確認一下唷～");
+  return;
+}
+
+        // ✅ Email 格式防呆
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
+        if (!emailOk) {
+          alert("Email 格式看起來不正確，請再確認一下（例如：you@gmail.com）");
+          return;
+        }
+
+
+// ✅ 台灣手機：09 + 10 碼
+const phoneDigits = phone.replace(/\D/g, "");
+if (!/^09\d{8}$/.test(phoneDigits)) {
+  alert("手機號碼格式不正確，請輸入 09 開頭的 10 碼手機號碼（例：0912345678）");
+  document.getElementById("checkoutPhone").focus();
+  return;
+}
+
+// ✅ Email 格式
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  alert("Email 格式不正確，請再確認一下（例：you@gmail.com）");
+  document.getElementById("checkoutEmail").focus();
+  return;
+}
+
+// ✅ 配送方式防呆：超商/宅配都必填地址（超商填門市）
+const addressEl = document.getElementById("checkoutAddress");
+const addr = (address || "").trim();
+if (ship === "home") {
+  if (addr.length < 6) {
+    alert("宅配到府請填寫完整收件地址（至少 6 個字）。");
+    addressEl.focus();
+    return;
+  }
+} else if (ship === "711" || ship === "family") {
+  if (addr.length < 2) {
+    alert("超商取貨請填寫「門市名稱」（例如：高雄xx門市）。");
+    addressEl.focus();
+    return;
   }
 }
 
-.hero-card {
-  padding: 36px;
+        const payload = {
+          items: cartItems.map((it) => ({
+            productId: it.productId,
+            specKey: it.specKey,
+            specLabel: it.specLabel,
+            name: it.name,
+            price: it.price,
+            qty: it.qty,
+          })),
+          customer: { name, phone, email, lineId, address, ship, pay, note },
+        };
+
+        try {
+          const result = await apiPost("/api/orders", payload);
+
+          const order = result.order || result.data || result;
+          const orderId = result.orderId || order.id || order.orderId || "（請看後台）";
+          const createdAt = order.createdAt || result.createdAt || "剛剛";
+          const status = order.status || result.status || "new";
+
+          const total =
+            typeof result.totalAmount === "number"
+              ? result.totalAmount
+              : typeof order.totalAmount === "number"
+              ? order.totalAmount
+              : calcCartTotal();
+
+          alert(
+            "訂單已建立囉！\n\n" +
+              "訂單編號：" + orderId + "\n" +
+              "建立時間：" + createdAt + "\n" +
+              "訂單狀態：" + status + "\n" +
+              "總金額：NT$ " + total + "\n\n" +
+              "之後可以用「電話 + 訂單編號」在下方訂單查詢區查看進度。\n\n" +
+              "加入官方 LINE：@301gfuh，就可以追蹤訂單、詢問出貨進度喔！"
+          );
+
+          window.location.reload();
+        } catch (err) {
+          console.error("POST /api/orders error", err);
+          alert(
+            "建立訂單時發生錯誤，可能是網路或伺服器暫時有問題，\n" +
+              "請稍後再試一次，或改用蝦皮 / Line 聯絡店主。\n\n" +
+              err.message
+          );
+        }
+      });
+    }
+
+    
+
+// ✅ 結帳欄位防呆：依配送方式提示地址/門市
+function updateCheckoutAddressHint() {
+  const shipEl = document.getElementById("checkoutShip");
+  const addrLabel = document.querySelector('label[for="checkoutAddress"]');
+  const hintEl = document.getElementById("checkoutAddressHint");
+  const addrEl = document.getElementById("checkoutAddress");
+  if (!shipEl || !addrLabel || !hintEl || !addrEl) return;
+
+  const ship = shipEl.value;
+  if (ship === "home") {
+    addrLabel.textContent = "收件地址（宅配必填）";
+    addrEl.placeholder = "例：高雄市○○區○○路○段○號○樓";
+    hintEl.textContent = "宅配到府：請填完整地址（必填）。";
+  } else if (ship === "711") {
+    addrLabel.textContent = "7-11 門市名稱（必填）";
+    addrEl.placeholder = "例：高雄○○門市（可加區域更好）";
+    hintEl.textContent = "超商取貨：請填門市名稱（必填）。";
+  } else if (ship === "family") {
+    addrLabel.textContent = "全家 門市名稱（必填）";
+    addrEl.placeholder = "例：高雄○○店／○○門市";
+    hintEl.textContent = "超商取貨：請填門市名稱（必填）。";
+  } else {
+    addrLabel.textContent = "收件地址 / 超商門市（必填）";
+    hintEl.textContent = "請填寫：超商（7-11/全家）請填「門市名稱」；宅配請填完整地址。";
+  }
 }
 
-.notice-test,
-.notice-color,
-.notice-dev {
-  display: none !important;
-}
-</style>
+document.addEventListener("DOMContentLoaded", () => {
+  const shipEl = document.getElementById("checkoutShip");
+  if (shipEl) shipEl.addEventListener("change", updateCheckoutAddressHint);
+  updateCheckoutAddressHint();
+});
 
-<p class="product-hint">
-  點擊商品圖片進去商品詳情觀看款式
-</p>
+
+
+    /* =========================================================
+      I-2) 結帳 Email 尾碼選單（gmail/yahoo/outlook...）＋ 自訂網域
+    ========================================================= */
+    (function initCheckoutEmailSelector(){
+      const localEl = document.getElementById("checkoutEmailLocal");
+      const domainEl = document.getElementById("checkoutEmailDomain");
+      const customEl = document.getElementById("checkoutEmailCustom");
+      const hintEl = document.getElementById("emailHint");
+      const hiddenEl = document.getElementById("checkoutEmail");
+
+      if (!localEl || !domainEl || !customEl) return;
+
+      function updateVisibility(){
+        const isCustom = domainEl.value === "custom";
+        customEl.style.display = isCustom ? "block" : "none";
+        if (!isCustom) customEl.value = "";
+        updatePreview();
+      }
+
+      function updatePreview(){
+        const local = (localEl.value || "").trim().replace(/\s+/g, "").replace(/@.*/g, "");
+        const domain = ((domainEl.value === "custom") ? (customEl.value || "").trim() : domainEl.value)
+          .replace(/^@+/, "")
+          .replace(/\s+/g, "");
+
+        const email = (local && domain) ? `${local}@${domain}` : "";
+        if (hiddenEl) hiddenEl.value = email;
+
+        if (hintEl) {
+          hintEl.textContent = email
+            ? `將使用：${email}（用於寄送訂單明細與出貨通知）`
+            : "會寄送訂單明細與出貨通知。";
+        }
+      }
+
+      // 防止在 local part 輸入 @domain
+      localEl.addEventListener("input", () => {
+        const v = (localEl.value || "");
+        if (v.includes("@")) localEl.value = v.split("@")[0];
+        updatePreview();
+      });
+
+      domainEl.addEventListener("change", updateVisibility);
+      customEl.addEventListener("input", updatePreview);
+
+      updateVisibility();
+    })();
+
+
+
+    /* =========================================================
+      I-3) 結帳/訂單查詢：更完整防呆（即時提示、不只 alert）
+    ========================================================= */
+    function ensureMsgEl(inputEl, id, className){
+      if (!inputEl) return null;
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement("div");
+        el.id = id;
+        el.className = className;
+        inputEl.insertAdjacentElement("afterend", el);
+      }
+      return el;
+    }
+
+    function showError(msgEl, text){
+      if (!msgEl) return;
+      msgEl.textContent = text || "";
+      msgEl.style.display = text ? "block" : "none";
+    }
+
+    function showOk(msgEl, text){
+      if (!msgEl) return;
+      msgEl.textContent = text || "";
+      msgEl.style.display = text ? "block" : "none";
+    }
+
+    function normalizeTwMobile(raw){
+      const d = String(raw || "").replace(/\D/g, "");
+      // 只保留 10 碼
+      return d.slice(0, 10);
+    }
+
+    function isValidTwMobile(raw){
+      const d = String(raw || "").replace(/\D/g, "");
+      return /^09\d{8}$/.test(d);
+    }
+
+    function isValidEmailLoose(email){
+      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(String(email || "").trim());
+    }
+
+    // ---- Checkout live validation
+    (function initCheckoutLiveValidation(){
+      const nameEl = document.getElementById("checkoutName");
+      const phoneEl = document.getElementById("checkoutPhone");
+      const shipEl = document.getElementById("checkoutShip");
+      const addrEl = document.getElementById("checkoutAddress");
+
+      const emailLocalEl = document.getElementById("checkoutEmailLocal");
+      const emailDomainEl = document.getElementById("checkoutEmailDomain");
+      const emailCustomEl = document.getElementById("checkoutEmailCustom");
+      const hiddenEmailEl = document.getElementById("checkoutEmail");
+
+      const errName = ensureMsgEl(nameEl, "errCheckoutName", "field-error");
+      const errPhone = ensureMsgEl(phoneEl, "errCheckoutPhone", "field-error");
+      const errEmail = ensureMsgEl(emailLocalEl || hiddenEmailEl, "errCheckoutEmail", "field-error");
+      const errAddr = ensureMsgEl(addrEl, "errCheckoutAddress", "field-error");
+
+      if (nameEl) {
+        nameEl.addEventListener("input", () => {
+          const v = (nameEl.value || "").trim();
+          showError(errName, v.length >= 2 ? "" : "姓名請至少 2 個字");
+        });
+      }
+
+      if (phoneEl) {
+        phoneEl.addEventListener("input", () => {
+          const normalized = normalizeTwMobile(phoneEl.value);
+          phoneEl.value = normalized;
+          showError(errPhone, isValidTwMobile(normalized) ? "" : "請輸入 09 開頭的 10 碼台灣手機號碼");
+        });
+        phoneEl.addEventListener("blur", () => {
+          const normalized = normalizeTwMobile(phoneEl.value);
+          showError(errPhone, normalized && !isValidTwMobile(normalized) ? "手機格式不正確（例：0912345678）" : "");
+        });
+      }
+
+      function validateAddressByShip(){
+        if (!addrEl || !shipEl) return true;
+        const ship = shipEl.value;
+        const v = (addrEl.value || "").trim();
+
+        if (ship === "home") {
+          const ok = v.length >= 6;
+          showError(errAddr, ok ? "" : "宅配請填完整地址（至少 6 個字）");
+          return ok;
+        }
+
+        // 超商：必填門市
+        const ok = v.length >= 3;
+        showError(errAddr, ok ? "" : "超商取貨請填「門市名稱」（必填）");
+        return ok;
+      }
+
+      if (shipEl) shipEl.addEventListener("change", validateAddressByShip);
+      if (addrEl) addrEl.addEventListener("input", validateAddressByShip);
+
+      function validateEmailNow(){
+        const email = (hiddenEmailEl?.value || "").trim();
+        showError(errEmail, email && isValidEmailLoose(email) ? "" : "Email 格式不正確（例：you@gmail.com）");
+        return !email || isValidEmailLoose(email);
+      }
+      if (emailLocalEl) emailLocalEl.addEventListener("input", validateEmailNow);
+      if (emailDomainEl) emailDomainEl.addEventListener("change", validateEmailNow);
+      if (emailCustomEl) emailCustomEl.addEventListener("input", validateEmailNow);
+
+      // 初始跑一次，避免空提示閃爍
+      validateAddressByShip();
+    })();
+
+    // ---- Order query (前台訂單查詢) + live validation
+    (function initOrderQueryForm(){
+      const form = document.getElementById("orderQueryForm");
+      const phoneEl = document.getElementById("queryPhone");
+      const idEl = document.getElementById("queryOrderId");
+      const resultEl = document.getElementById("orderResult");
+
+      const errPhone = ensureMsgEl(phoneEl, "errQueryPhone", "field-error");
+      const errId = ensureMsgEl(idEl, "errQueryOrderId", "field-error");
+
+      if (phoneEl) {
+        phoneEl.addEventListener("input", () => {
+          const normalized = normalizeTwMobile(phoneEl.value);
+          phoneEl.value = normalized;
+          showError(errPhone, isValidTwMobile(normalized) ? "" : "請輸入 09 開頭的 10 碼手機號碼");
+        });
+      }
+
+      if (idEl) {
+        idEl.addEventListener("input", () => {
+          const v = (idEl.value || "").trim();
+          showError(errId, v ? "" : "請輸入訂單編號");
+        });
+      }
+
+      function renderOrderResult(order){
+        if (!resultEl) return;
+        if (!order) { resultEl.innerHTML = ""; return; }
+
+        const items = Array.isArray(order.items) ? order.items : (Array.isArray(order.itemsJson) ? order.itemsJson : []);
+        const statusText = order.statusText || order.status || "未完成 / 新訂單";
+        const createdAt = order.createdAt || "";
+        const customer = order.customer || {};
+        const total = (typeof order.totalAmount === "number") ? order.totalAmount : null;
+
+        const itemsHtml = (Array.isArray(order.items) ? order.items : [])
+          .map(it => {
+            const name = it.name || "";
+            const spec = it.specLabel ? `（${it.specLabel}）` : "";
+            const qty = it.qty || 0;
+            return `<li>${name}${spec} × ${qty}</li>`;
+          }).join("");
+
+        resultEl.innerHTML = `
+          <div style="margin-top:12px;padding:12px 14px;border-radius:14px;background:#fffdf5;border:1px dashed #f0d9a4;color:#4f3b2a;">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div><strong>訂單編號：</strong>${order.id || ""}</div>
+              <div><strong>狀態：</strong>${statusText}</div>
+            </div>
+            ${createdAt ? `<div style="margin-top:6px;font-size:13px;color:#9a7641;">建立時間：${createdAt}</div>` : ""}
+            <div style="margin-top:8px;font-size:13px;">
+              <div><strong>收件人：</strong>${customer.name || "-"}</div>
+              <div><strong>配送：</strong>${customer.ship || "-"}</div>
+              <div><strong>地址 / 門市：</strong>${customer.address || "-"}</div>
+            </div>
+            ${itemsHtml ? `<div style="margin-top:10px;"><strong>商品：</strong><ul style="padding-left:18px;margin-top:6px;">${itemsHtml}</ul></div>` : ""}
+            ${total !== null ? `<div style="margin-top:10px;"><strong>總金額：</strong>NT$ ${total}</div>` : ""}
+          </div>
+        `;
+      }
+
+      if (!form) return;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const phone = normalizeTwMobile(phoneEl?.value || "");
+        const orderId = (idEl?.value || "").trim();
+
+        if (!isValidTwMobile(phone)) {
+          showError(errPhone, "請輸入 09 開頭的 10 碼手機號碼");
+          return;
+        } else showError(errPhone, "");
+
+        if (!orderId) {
+          showError(errId, "請輸入訂單編號");
+          return;
+        } else showError(errId, "");
+
+        if (resultEl) resultEl.innerHTML = "查詢中…";
+
+        try {
+          const data = await apiGet(`/api/orders/query?phone=${encodeURIComponent(phone)}&id=${encodeURIComponent(orderId)}`);
+          const order = data?.order || data?.data || data;
+          renderOrderResult(order);
+        } catch (err) {
+          console.error("Order query error", err);
+          if (resultEl) {
+            resultEl.innerHTML = `
+              <div style="margin-top:12px;padding:12px 14px;border-radius:14px;background:#fff0f0;border:1px solid #f3b2b2;color:#8b2b2b;">
+                查詢失敗：${(err && err.message) ? err.message : "請稍後再試"}
+              </div>
+            `;
+          }
+        }
+      });
+    })();
+
+
+/* =========================================================
+      J) Hero 產品圖輪播
+    ========================================================= */
+    let heroSlideIndex = 0;
+    let heroSlideTimer = null;
+
+    function pickHeroProducts(list){
+      const arr = Array.isArray(list) ? list.slice() : [];
+      const preferred = arr.filter(p => {
+        const t = String(p.tag || "");
+        return t.includes("主打") || t.includes("熱賣") || t.includes("新品");
+      });
+      return (preferred.length ? preferred : arr).slice(0, 6);
+    }
+
+    function buildHeroSlides(){
+      const slidesEl = document.getElementById("heroBannerSlides");
+      const dotsEl = document.getElementById("heroBannerDots");
+      if (!slidesEl || !dotsEl) return;
+
+      slidesEl.innerHTML = "";
+      dotsEl.innerHTML = "";
+
+      const picked = pickHeroProducts(products);
+
+      if (!picked.length) {
+        slidesEl.innerHTML = `
+          <div class="hero-banner-slide active">
+            <div class="hero-banner-top">
+              <div>
+                <div class="hero-banner-tag">主打商品</div>
+                <div class="hero-banner-title">目前尚未載入商品</div>
+                <div class="hero-banner-sub">請確認後端 /api/products 是否正常回傳。</div>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      picked.forEach((p, idx) => {
+        const specs = p.specs || [];
+        const firstSpec = specs[0];
+
+        const imgRaw =
+          p.imageUrl ||
+          (firstSpec && firstSpec.mainImg) ||
+          (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
+          "";
+
+        const title = p.name || "商品";
+        const sub = p.subtitle || p.shortDesc || "點擊查看商品詳情";
+        const tag = p.tag || "主打商品";
+
+        const slide = document.createElement("div");
+        slide.className = "hero-banner-slide" + (idx === 0 ? " active" : "");
+        slide.innerHTML = `
+          <div class="hero-banner-top">
+            <div>
+              <div class="hero-banner-tag">${tag}</div>
+              <div class="hero-banner-title">${title}</div>
+              <div class="hero-banner-sub">${sub}</div>
+            </div>
+          </div>
+
+          <div class="hero-banner-media" role="button" aria-label="開啟商品詳情">
+            ${imgRaw ? `<img src="${resolveImgUrl(imgRaw)}" alt="${title}">` : ""}
+          </div>
+
+          <div class="hero-banner-cta">
+            <button type="button" class="cta-primary">查看商品</button>
+            <button type="button" class="cta-secondary">加入購物車</button>
+          </div>
+        `;
+
+        const media = slide.querySelector(".hero-banner-media");
+        const ctaView = slide.querySelector(".cta-primary");
+        if (media) media.addEventListener("click", () => openProduct(p.id));
+        if (ctaView) ctaView.addEventListener("click", () => openProduct(p.id));
+
+        const ctaAdd = slide.querySelector(".cta-secondary");
+        if (ctaAdd) {
+          ctaAdd.addEventListener("click", () => {
+            const specKey = (p.specs && p.specs[0] && p.specs[0].key) ? p.specs[0].key : "";
+            addToCart(p.id, specKey, 1);
+            scrollToSection("cart");
+          });
+        }
+
+        slidesEl.appendChild(slide);
+
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "hero-dot" + (idx === 0 ? " active" : "");
+        dot.setAttribute("aria-label", `第 ${idx + 1} 張 Banner`);
+        dot.addEventListener("click", () => {
+          showHeroSlide(idx);
+          restartHeroTimer();
+        });
+        dotsEl.appendChild(dot);
+      });
+    }
+
+    function showHeroSlide(i){
+      const slides = document.querySelectorAll("#heroBannerSlides .hero-banner-slide");
+      const dots = document.querySelectorAll("#heroBannerDots .hero-dot");
+      if (!slides.length || !dots.length) return;
+
+      const total = slides.length;
+      heroSlideIndex = (i + total) % total;
+
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === heroSlideIndex));
+      dots.forEach((d, idx) => d.classList.toggle("active", idx === heroSlideIndex));
+    }
+
+    function nextHeroSlide(){ showHeroSlide(heroSlideIndex + 1); }
+
+    function restartHeroTimer(){
+      if (heroSlideTimer) clearInterval(heroSlideTimer);
+      heroSlideTimer = setInterval(nextHeroSlide, 6000);
+    }
+
+    function initHeroBanner(){
+      buildHeroSlides();
+      showHeroSlide(0);
+      restartHeroTimer();
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          if (heroSlideTimer) clearInterval(heroSlideTimer);
+        } else {
+          restartHeroTimer();
+        }
+      });
+    }
+
+    /* =========================================================
+      Lightbox
+    ========================================================= */
+    const lb = document.getElementById("imgLightbox");
+    const lbImg = document.getElementById("lbImg");
+    const lbClose = document.getElementById("lbClose");
+    const lbPrev = document.getElementById("lbPrev");
+    const lbNext = document.getElementById("lbNext");
+    const lbStage = document.getElementById("lbStage");
+
+    let lbList = [];
+    let lbIndex = 0;
+
+    function openLightbox(list, startIndex = 0){
+      lbList = Array.isArray(list) ? list.filter(Boolean) : [];
+      lbIndex = Math.max(0, Math.min(startIndex, lbList.length - 1));
+      if (!lbList.length) return;
+
+      lbImg.src = resolveImgUrl(lbList[lbIndex]);
+      lb.classList.add("open");
+      lb.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox(){
+      lb.classList.remove("open");
+      lb.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      lbImg.src = "";
+    }
+
+    function lightboxGo(delta){
+      if (!lbList.length) return;
+      lbIndex = (lbIndex + delta + lbList.length) % lbList.length;
+      lbImg.src = resolveImgUrl(lbList[lbIndex]);
+    }
+
+    lbClose.addEventListener("click", closeLightbox);
+    lb.addEventListener("click", (e) => { if (e.target === lb) closeLightbox(); });
+    lbPrev.addEventListener("click", (e) => { e.stopPropagation(); lightboxGo(-1); });
+    lbNext.addEventListener("click", (e) => { e.stopPropagation(); lightboxGo(1); });
+
+    document.addEventListener("keydown", (e) => {
+      if (!lb.classList.contains("open")) return;
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") lightboxGo(-1);
+      if (e.key === "ArrowRight") lightboxGo(1);
+    });
+
+    let touchStartX = 0;
+    lbStage.addEventListener("touchstart", (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    lbStage.addEventListener("touchend", (e) => {
+      const endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : touchStartX;
+      const dx = endX - touchStartX;
+      if (Math.abs(dx) > 40) dx > 0 ? lightboxGo(-1) : lightboxGo(1);
+    }, { passive: true });
+
+    if (detailMainImg) {
+      detailMainImg.style.cursor = "zoom-in";
+      detailMainImg.addEventListener("click", () => {
+        const p = products.find(x => x.id === currentDetailProductId);
+        if (!p) return;
+
+        const spec = (p.specs || []).find(s => s.key === currentDetailSpecKey) || (p.specs || [])[0];
+        const thumbs = (spec && spec.thumbs && spec.thumbs.length) ? spec.thumbs : [];
+
+        const currentSrcRaw = (spec && spec.mainImg) ? spec.mainImg : (p.imageUrl || "");
+        const list = thumbs.length ? thumbs : [currentSrcRaw];
+
+        const currentResolved = resolveImgUrl(currentSrcRaw);
+        let start = 0;
+        for (let i = 0; i < list.length; i++){
+          if (resolveImgUrl(list[i]) === currentResolved) { start = i; break; }
+        }
+        openLightbox(list, start);
+      });
+    }
+
+    lbStage.addEventListener("wheel", (e) => {
+      if (!lb.classList.contains("open")) return;
+      e.preventDefault();
+      if (e.deltaY > 0) lightboxGo(1);
+      else lightboxGo(-1);
+    }, { passive: false });
+
+    /* =========================================================
+      K) 初始化
+    ========================================================= */
+    async function initPage() {
+      updateCartBtnText();
+      await loadProducts();
+
+      currentCategory = "all";
+      currentKeyword = "";
+
+      renderProductGrid();
+      renderCart();
+      updateCartSummary();
+
+      const checkoutShipEl = document.getElementById("checkoutShip");
+      if (checkoutShipEl) checkoutShipEl.addEventListener("change", () => updateCartSummary());
+
+      initHeroBanner();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initPage);
+    } else {
+      initPage();
+    }
+  </script>
+<script>
+/* fix: prevent search focus scroll jump on mobile (iOS keyboard) */
+(function () {
+  const input = document.getElementById('heroSearchInput');
+  if (!input) return;
+
+  let lastY = 0;
+
+  input.addEventListener('focus', () => {
+    lastY = window.scrollY || 0;
+    setTimeout(() => window.scrollTo(0, lastY), 50);
+    setTimeout(() => window.scrollTo(0, lastY), 250);
+    setTimeout(() => window.scrollTo(0, lastY), 600);
+  });
+
+  input.addEventListener('touchstart', () => {
+    try { input.focus({ preventScroll: true }); } catch (e) {}
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

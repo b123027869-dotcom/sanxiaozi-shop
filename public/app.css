@@ -1,22 +1,12 @@
-/* ===== Responsive product grid: small mobile 1 col / large mobile 2 col ===== */
+/* ===== Mobile product grid fix ===== */
 
-/* Default: 2 columns for >= 390px-ish devices */
+/* Product list grid */
 .products-grid,
 .product-grid,
 .items-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-}
-
-/* Small mobile: 1 column */
-@media (max-width: 389px) {
-  .products-grid,
-  .product-grid,
-  .items-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
 }
 
 /* Ensure cards don't overflow */
@@ -33,4 +23,13 @@
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .products-grid,
+  .product-grid,
+  .items-grid {
+    gap: 10px;
+  }
 }
