@@ -405,20 +405,22 @@ function showOrderSuccessNotice({ orderId, createdAt, status, total, email }) {
         });
 
         const addBtn = article.querySelector(".btn-cart");
-        addBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const qty = parseInt(qtyInput.value || "1", 10) || 1;
+        const addBtn = article.querySelector(".btn-cart");
+addBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
 
-          const specList = product.specs || [];
-          // 多款式：先進入詳情頁選款（列表不直接選）
-          if (specList.length > 1) {
-            openProduct(product.id);
-            return;
-          }
+  const qty = parseInt(qtyInput.value || "1", 10) || 1;
+  const specList = product.specs || [];
 
-          const specKey = article.dataset.selectedSpec || "";
-          addToCart(product.id, specKey, qty);
-        });
+  // 多款式：先進入詳情頁選款（列表不直接選）
+  if (specList.length > 1) {
+    openProduct(product.id);
+    return;
+  }
+
+  const specKey = (specList[0] && specList[0].key) ? specList[0].key : "";
+  addToCart(product.id, specKey, qty);
+});
 
         productGrid.appendChild(article);
       });

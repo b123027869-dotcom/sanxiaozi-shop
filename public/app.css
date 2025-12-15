@@ -1,41 +1,40 @@
-/* ===== Mobile product grid fix (SANXIAOZI) ===== */
+/* ===== SANXIAOZI: Product grid safe layout ===== */
 
-/* 讓商品列表「不被內容撐爆」：一行兩個（手機） */
+/* Default: desktop */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
 }
 
-/* 手機：固定 2 欄 */
+/* Tablet */
+@media (max-width: 900px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Mobile: always 2 columns */
 @media (max-width: 768px) {
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 }
-
 @media (max-width: 480px) {
   .product-grid {
     gap: 10px;
   }
 }
 
-/* 防止卡片被內部長文字撐出螢幕 */
+/* Prevent overflow */
 .product-card {
-  width: 100%;
-  max-width: 100%;
   min-width: 0;
-  box-sizing: border-box;
+  max-width: 100%;
 }
 
-.product-card img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* 列表小提示 */
+/* List hint under price */
 .card-hint {
   margin-top: 8px;
   font-size: 12px;
