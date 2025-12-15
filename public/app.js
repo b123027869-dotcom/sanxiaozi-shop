@@ -204,20 +204,40 @@ function setDetailSpec(productId, specKey) {
     (spec.thumbs && spec.thumbs[0]) ||
     "";
 
-  detailMainImg.src = resolveImgUrl(mainImgRaw);
+  const thumbs = spec.thumbs || [];
 
+  // ✅ 建立 Gallery state（給主圖 / 滑動 / Lightbox 共用）
+  buildDetailGallery(mainImgRaw, thumbs);
+
+  // ✅ 顯示第一張
+  setMainImageByIndex(0);
+
+  // 主圖尺寸（避免遮擋）
+  detailMainImg.style.maxHeight = "40vh";
+  detailMainImg.style.objectFit = "contain";
+
+  // ✅ 建立縮圖
   detailThumbs.innerHTML = "";
-  (spec.thumbs || []).forEach((img) => {
+  detailGallery.images.forEach((raw, i) => {
     const t = document.createElement("img");
-    t.src = resolveImgUrl(img);
-    t.onclick = () => (detailMainImg.src = t.src);
+    t.src = resolveImgUrl(raw);
+    t.dataset.raw = raw;
+    if (i === 0) t.classList.add("active");
+
+    t.onclick = () => setMainImageByIndex(i);
     detailThumbs.appendChild(t);
   });
 
+  // ✅ 綁定「主圖滑動 + 點擊 Lightbox」（只綁一次）
+  ensureDetailGalleryBindings();
+
+  // 規格按鈕 active
   [...detailSpecs.children].forEach((b) =>
     b.classList.toggle("active", b.textContent === spec.label)
   );
 }
+
+
 
 /* =========================================================
    F) 購物車（只從詳情加入）
@@ -615,6 +635,228 @@ function setActive(nextIndex) {
   startAuto();
 }
 
+/* =========================================================
+   ✅ 商品詳情：圖庫（主圖/縮圖/滑動）＋ Lightbox
+========================================================= */
+let detailGallery = {
+  images: [],     // 這個款式的圖片列表（含主圖+縮圖）
+  index: 0,       // 目前顯示第幾張
+};
+
+function uniqImages(arr) {
+  const set = new Set();
+  return arr.filter((x) => {
+    const raw = String(x || "").trim();
+    if (!raw) return false;
+
+    // ✅ 用「最終 URL」當 key，避免 /a.jpg vs a.jpg vs https://.../a.jpg 被當成不同
+    const key = resolveImgUrl(raw);
+
+    if (set.has(key)) return false;
+    set.add(key);
+    return true;
+  });
+}
+
+
+function buildDetailGallery(mainImgRaw, thumbsArr) {
+  const list = uniqImages([mainImgRaw, ...(thumbsArr || [])]);
+  detailGallery.images = list;
+  detailGallery.index = 0;
+}
+
+function setMainImageByIndex(nextIdx, { syncThumb = true } = {}) {
+  const imgs = detailGallery.images || [];
+  if (!imgs.length) return;
+
+  const idx = (nextIdx + imgs.length) % imgs.length;
+  detailGallery.index = idx;
+
+  const url = resolveImgUrl(imgs[idx]);
+  if (detailMainImg) detailMainImg.src = url;
+
+  // 同步縮圖 active（找得到就亮）
+  if (syncThumb) {
+    const thumbs = Array.from(detailThumbs?.querySelectorAll("img") || []);
+    thumbs.forEach((t) => t.classList.remove("active"));
+    const hit = thumbs.find((t) => t.dataset.raw === imgs[idx]);
+    if (hit) hit.classList.add("active");
+  }
+
+  // ④ 自動判斷直/橫圖比例（加 class 給 CSS 用）
+  if (detailMainImg) {
+    detailMainImg.onload = () => {
+      const w = detailMainImg.naturalWidth || 0;
+      const h = detailMainImg.naturalHeight || 0;
+      detailMainImg.classList.toggle("is-portrait", h > w);
+      detailMainImg.classList.toggle("is-landscape", w >= h);
+    };
+  }
+}
+
+/* -------------------------
+   ① Lightbox（像蝦皮）
+------------------------- */
+function ensureLightbox() {
+  if (document.getElementById("sxzLightbox")) return;
+
+  const lb = document.createElement("div");
+  lb.id = "sxzLightbox";
+  lb.querySelector(".lb-img").addEventListener("click", () => closeLightbox());
+  lb.innerHTML = `
+    <div class="lb-backdrop"></div>
+    <div class="lb-panel" role="dialog" aria-modal="true">
+      <button class="lb-close" type="button" aria-label="關閉">×</button>
+      <img class="lb-img" alt="預覽">
+      <button class="lb-nav lb-prev" type="button" aria-label="上一張">‹</button>
+      <button class="lb-nav lb-next" type="button" aria-label="下一張">›</button>
+      <div class="lb-indicator"></div>
+    </div>
+  `;
+  document.body.appendChild(lb);
+
+  const close = () => closeLightbox();
+  lb.querySelector(".lb-backdrop").addEventListener("click", close);
+  lb.querySelector(".lb-close").addEventListener("click", close);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") return closeLightbox();
+  if (!lb.classList.contains("open")) return;
+  if (e.key === "ArrowLeft") return lightboxStep(-1);
+  if (e.key === "ArrowRight") return lightboxStep(1);
+});
+
+
+  // Lightbox 手機滑動
+  let sx = 0, sy = 0, tracking = false;
+  const SWIPE_MIN_X = 40;
+  const SWIPE_MAX_Y = 80;
+
+  lb.querySelector(".lb-img").addEventListener("touchstart", (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    tracking = true;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  }, { passive: true });
+
+  lb.querySelector(".lb-img").addEventListener("touchend", (e) => {
+    if (!tracking) return;
+    tracking = false;
+
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+
+    if (Math.abs(dy) > SWIPE_MAX_Y) return;
+    if (Math.abs(dx) < SWIPE_MIN_X) return;
+
+    if (dx < 0) lightboxStep(1);
+    else lightboxStep(-1);
+  }, { passive: true });
+
+  // 點左右按鈕
+  lb.querySelector(".lb-prev").addEventListener("click", () => lightboxStep(-1));
+  lb.querySelector(".lb-next").addEventListener("click", () => lightboxStep(1));
+}
+
+function openLightboxByIndex(idx) {
+  ensureLightbox();
+  const lb = document.getElementById("sxzLightbox");
+  const imgEl = lb.querySelector(".lb-img");
+  const indEl = lb.querySelector(".lb-indicator");
+  const imgs = detailGallery.images || [];
+  if (!imgs.length) return;
+
+  const safe = (idx + imgs.length) % imgs.length;
+  detailGallery.index = safe;
+
+  imgEl.src = resolveImgUrl(imgs[safe]);
+  indEl.textContent = `${safe + 1} / ${imgs.length}`;
+
+  lb.classList.add("open");
+  document.body.classList.add("no-scroll");
+}
+
+function closeLightbox() {
+  const lb = document.getElementById("sxzLightbox");
+  if (!lb) return;
+  lb.classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
+
+function lightboxStep(delta) {
+  const lb = document.getElementById("sxzLightbox");
+  if (!lb || !lb.classList.contains("open")) return;
+
+  const imgs = detailGallery.images || [];
+  if (!imgs.length) return;
+
+  const imgEl = lb.querySelector(".lb-img");
+  const indEl = lb.querySelector(".lb-indicator");
+
+  const next = (detailGallery.index + delta + imgs.length) % imgs.length;
+  detailGallery.index = next;
+
+  // ✅ 淡出 → 換圖 → 淡入
+  imgEl.style.opacity = "0";
+  setTimeout(() => {
+    imgEl.src = resolveImgUrl(imgs[next]);
+    indEl.textContent = `${next + 1} / ${imgs.length}`;
+    imgEl.style.opacity = "1";
+
+    // 同步回詳情主圖
+    setMainImageByIndex(next);
+  }, 80);
+}
+
+/* -------------------------
+   ② 手機主圖滑動切換縮圖
+------------------------- */
+function bindDetailSwipeOnMainImage() {
+  if (!detailMainImg) return;
+
+  let sx = 0, sy = 0, tracking = false;
+  const SWIPE_MIN_X = 35;
+  const SWIPE_MAX_Y = 80;
+
+  detailMainImg.addEventListener("touchstart", (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    tracking = true;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  }, { passive: true });
+
+  detailMainImg.addEventListener("touchend", (e) => {
+    if (!tracking) return;
+    tracking = false;
+
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+
+    // 垂直捲動就放過
+    if (Math.abs(dy) > SWIPE_MAX_Y) return;
+    if (Math.abs(dx) < SWIPE_MIN_X) return;
+
+    if (dx < 0) setMainImageByIndex(detailGallery.index + 1); // 左滑下一張
+    else setMainImageByIndex(detailGallery.index - 1);        // 右滑上一張
+  }, { passive: true });
+
+  // 主圖點擊→Lightbox
+  detailMainImg.style.cursor = "zoom-in";
+  detailMainImg.addEventListener("click", () => openLightboxByIndex(detailGallery.index));
+}
+
+// 只要頁面載入一次就綁定（避免重複綁）
+let __detailSwipeBound = false;
+function ensureDetailGalleryBindings() {
+  if (__detailSwipeBound) return;
+  __detailSwipeBound = true;
+  bindDetailSwipeOnMainImage();
+}
 
 
 /* =========================================================

@@ -65,3 +65,133 @@
 .product-bottom {
   margin-top: auto; /* bottom area stays aligned */
 }
+
+/* =========================================================
+   ✅ 商品詳情主圖：縮小至少一半 + sticky
+========================================================= */
+
+/* ③ sticky：主圖在捲動時仍可看到（桌機/手機都可） */
+#detailMainImg{
+  width: 100%;
+  height: auto;
+  max-height: 42vh;      /* ⭐ 直接縮小（至少小一半） */
+  object-fit: contain;   /* 不裁切 */
+  border-radius: 16px;
+}
+
+/* 如果你的詳情區有左右欄容器，這段會更穩（沒有也沒關係） */
+#productDetail .pd-media,
+#productDetail .pd-left,
+#productDetail .product-media{
+  position: sticky;
+  top: 88px; /* 依你 header 高度可調 */
+  align-self: start;
+}
+
+/* ④ 直/橫圖比例微調（JS 會自動加 class） */
+#detailMainImg.is-portrait{
+  max-height: 48vh;
+}
+#detailMainImg.is-landscape{
+  max-height: 38vh;
+}
+
+/* 縮圖 active */
+#detailThumbs img.active{
+  outline: 3px solid rgba(120, 170, 255, .9);
+  border-radius: 12px;
+}
+
+/* =========================================================
+   ✅ Lightbox（像蝦皮）
+========================================================= */
+#sxzLightbox{
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: none;
+}
+#sxzLightbox.open{ display: block; }
+
+#sxzLightbox .lb-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+}
+
+#sxzLightbox .lb-panel{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+#sxzLightbox .lb-img{
+  max-width: min(96vw, 980px);
+  max-height: 86vh;
+  border-radius: 18px;
+  background: rgba(255,255,255,.08);
+  object-fit: contain;
+  box-shadow: 0 16px 60px rgba(0,0,0,.35);
+}
+
+#sxzLightbox .lb-close{
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 26px;
+  cursor: pointer;
+}
+
+#sxzLightbox .lb-nav{
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+}
+#sxzLightbox .lb-prev{ left: 14px; }
+#sxzLightbox .lb-next{ right: 14px; }
+
+#sxzLightbox .lb-indicator{
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 開 Lightbox 時禁止背景捲動 */
+body.no-scroll{
+  overflow: hidden;
+}
+
+
+body.no-scroll{
+  overflow: hidden;
+  touch-action: none;
+}
+#sxzLightbox{
+  touch-action: pan-y;
+}
+#sxzLightbox .lb-img{
+  touch-action: pan-y;
+}
