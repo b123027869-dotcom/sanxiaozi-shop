@@ -1,1000 +1,639 @@
-/* =========================================================
-      A) 常數設定（圖片 / API）
-    ========================================================= */
-    const SUPABASE_IMG_BASE =
-      "https://ckqdimygblkasofycwvr.supabase.co/storage/v1/object/public/product-images/";
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  alert("我真的有讀到 app.js");
+}
 
-    function resolveImgUrl(url) {
-      if (!url) return "";
-      if (/^https?:\/\//i.test(url)) return url;
-      return SUPABASE_IMG_BASE + url.replace(/^\/+/, "");
+/* =========================================================
+ * Shipping / Free shipping rule (單一來源設定)
+ * ========================================================= */
+const SHIPPING_RULE = {
+  freeThreshold: 699,                // ⭐ 免運門檻
+  freeText: '滿 NT$699 全館免運',     // ⭐ 顯示文案
+  storeFee: 100,                      // 超商運費
+  homeFee: 120                       // 宅配運費
+};
+
+/* =========================================================
+   A) 常數設定（圖片 / API）
+========================================================= */
+const SUPABASE_IMG_BASE =
+  "https://ckqdimygblkasofycwvr.supabase.co/storage/v1/object/public/product-images/";
+
+function resolveImgUrl(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return SUPABASE_IMG_BASE + url.replace(/^\/+/, "");
+}
+
+const API_BASE =
+  (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000"
+    : location.origin;
+
+/* =========================================================
+   API helpers
+========================================================= */
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error("API 錯誤：" + res.status + " " + text);
+  }
+  return res.json();
+}
+
+async function apiPost(path, data) {
+  const res = await fetch(API_BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error("API 錯誤：" + res.status + " " + text);
+  }
+  return res.json();
+}
+
+/* =========================================================
+   B) 商品資料
+========================================================= */
+let products = [];
+let currentCategory = "all";
+let currentKeyword = "";
+
+const productGrid = document.getElementById("productGrid");
+const productEmptyHint = document.getElementById("productEmptyHint");
+
+/* =========================================================
+   C) 載入商品
+========================================================= */
+async function loadProducts() {
+  const data = await apiGet("/api/products");
+  const list = data.products || data.data || [];
+  products = Array.isArray(list) ? list : [];
+}
+
+/* =========================================================
+   D) 商品列表（只能看，不能下單）
+========================================================= */
+function renderProductGrid() {
+  if (!productGrid) return;
+  productGrid.innerHTML = "";
+
+  const filtered = products.filter((p) => {
+    if (currentCategory !== "all" && !(p.categories || []).includes(currentCategory)) {
+      return false;
     }
+    if (!currentKeyword) return true;
 
-    const API_BASE =
-      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:3000'
-        : location.origin;
+    const text = [
+      p.name,
+      p.subtitle,
+      (p.categories || []).join(" "),
+      p.shortDesc,
+      p.code,
+    ]
+      .join(" ")
+      .toLowerCase();
 
-    async function apiPost(path, data) {
-      const res = await fetch(API_BASE + path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
+    return text.includes(currentKeyword.toLowerCase());
+  });
+
+  if (productEmptyHint) {
+    productEmptyHint.style.display = filtered.length ? "none" : "block";
+  }
+
+  filtered.forEach((product) => {
+    const specs = product.specs || [];
+    const firstSpec = specs[0];
+
+    const mainImgRaw =
+      product.imageUrl ||
+      (firstSpec && firstSpec.mainImg) ||
+      (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
+      "";
+
+    const mainImg = resolveImgUrl(mainImgRaw);
+
+    const card = document.createElement("article");
+    card.className = "product-card";
+
+    card.innerHTML = `
+      ${product.tag ? `<div class="product-tag">${product.tag}</div>` : ""}
+      <div class="product-img">
+        ${mainImg ? `<img src="${mainImg}" alt="${product.name}">` : ""}
+      </div>
+      <h4 class="product-name">${product.name}</h4>
+
+      <div class="product-bottom">
+        <div class="product-price">NT$ ${product.price}</div>
+        <div class="card-hint">點擊查看商品詳情</div>
+      </div>
+    `;
+
+    card.querySelector(".product-img").onclick = () => openProduct(product.id);
+    card.querySelector(".product-name").onclick = () => openProduct(product.id);
+
+    productGrid.appendChild(card);
+  });
+}
 
 /* =========================================================
-   Modal（漂亮彈窗）- 下單成功提示（有填 Email 才顯示提醒）
-   ========================================================= */
-function showModal(title, message) {
-  // remove existing
-  const old = document.getElementById("order-modal");
-  if (old) old.remove();
+   E) 商品詳情（唯一能下單的地方）
+========================================================= */
+const productDetailSection = document.getElementById("productDetail");
+const detailName = document.getElementById("detailName");
+const detailSub = document.getElementById("detailSub");
+const detailPrice = document.getElementById("detailPrice");
+const detailDesc = document.getElementById("detailDesc");
+const detailMainImg = document.getElementById("detailMainImg");
+const detailThumbs = document.getElementById("detailThumbs");
+const detailSpecs = document.getElementById("detailSpecs");
+const detailQtyInput = document.getElementById("detailQtyInput");
+const detailAddBtn = document.getElementById("detailAddBtn");
 
-  const modal = document.createElement("div");
-  modal.id = "order-modal";
-  modal.innerHTML = `
-    <div class="modal-backdrop"></div>
-    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <h2 id="modal-title"></h2>
-      <p id="modal-message"></p>
-      <button id="modal-close" type="button">我知道了</button>
-    </div>
-  `;
-  document.body.appendChild(modal);
+let currentDetailProductId = null;
+let currentDetailSpecKey = null;
 
-  modal.querySelector("#modal-title").innerText = title;
-  modal.querySelector("#modal-message").innerText = message;
+function openProduct(productId) {
+  const product = products.find((p) => p.id === productId);
+  if (!product) return;
 
-  const close = () => modal.remove();
-  modal.querySelector(".modal-backdrop").onclick = close;
-  modal.querySelector("#modal-close").onclick = close;
+  currentDetailProductId = productId;
+  currentDetailSpecKey = null;
 
-  // ESC 關閉
-  window.addEventListener(
-    "keydown",
-    (e) => {
-      if (e.key === "Escape") close();
-    },
-    { once: true }
+  detailName.textContent = product.name;
+  detailSub.textContent = product.subtitle || "";
+  detailPrice.textContent = product.price;
+  detailDesc.innerHTML = product.detailHtml || "";
+
+  detailSpecs.innerHTML = "";
+  (product.specs || []).forEach((spec, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = spec.label;
+    btn.className = "pd-spec-btn" + (i === 0 ? " active" : "");
+    btn.onclick = () => setDetailSpec(productId, spec.key);
+    detailSpecs.appendChild(btn);
+  });
+
+  if (product.specs && product.specs[0]) {
+    setDetailSpec(productId, product.specs[0].key);
+  }
+
+  detailQtyInput.value = 1;
+  productDetailSection.style.display = "block";
+  setTimeout(() => {
+  productDetailSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}, 50);
+
+}
+
+function setDetailSpec(productId, specKey) {
+  const product = products.find((p) => p.id === productId);
+  if (!product) return;
+
+  const spec = (product.specs || []).find((s) => s.key === specKey);
+  if (!spec) return;
+
+  currentDetailSpecKey = spec.key;
+
+  const mainImgRaw =
+    spec.mainImg ||
+    product.imageUrl ||
+    (spec.thumbs && spec.thumbs[0]) ||
+    "";
+
+  detailMainImg.src = resolveImgUrl(mainImgRaw);
+
+  detailThumbs.innerHTML = "";
+  (spec.thumbs || []).forEach((img) => {
+    const t = document.createElement("img");
+    t.src = resolveImgUrl(img);
+    t.onclick = () => (detailMainImg.src = t.src);
+    detailThumbs.appendChild(t);
+  });
+
+  [...detailSpecs.children].forEach((b) =>
+    b.classList.toggle("active", b.textContent === spec.label)
   );
 }
 
-function showOrderSuccessNotice({ orderId, createdAt, status, total, email }) {
-  const base = "我們已收到您的訂單，將依序為您準備出貨 🤍";
-  const details =
-    "\n\n📦 訂單資訊\n" +
-    "訂單編號：" + orderId + "\n" +
-    "建立時間：" + createdAt + "\n" +
-    "訂單狀態：" + status + "\n" +
-    "總金額：NT$ " + total;
+/* =========================================================
+   F) 購物車（只從詳情加入）
+========================================================= */
+let cartItems = [];
 
-  const emailLine = (email && String(email).trim())
-    ? "\n\n📩【重要提醒】\n您的訂單資訊已寄送至您的 Email，請記得查收。\n若未在收件匣看到，請一併查看垃圾郵件匣。"
-    : "";
+// =========================================================
+// Shipping rule text (同步顯示到購物車摘要)
+// 你要顯示：「滿 699 超商免運」→ 這裡統一產生文案（不寫死 699）
+// =========================================================
+function syncShippingRuleText() {
+  const el = document.getElementById("shippingRuleText");
+  if (!el) return;
 
-  const tail = "\n\n之後可以用「電話 + 訂單編號」在下方訂單查詢區查看進度。\n謝謝您～";
-  showModal("🎉 訂單成立成功！", base + details + emailLine + tail);
+  el.textContent = `滿 NT$${SHIPPING_RULE.freeThreshold} 超商免運`;
 }
 
-);
+// =========================================================
+// Shipping fee calculator (單一來源：免運門檻 / 運費)
+// =========================================================
+function calcShipping(subtotal, shipType) {
+  // 免運
+  if (subtotal >= SHIPPING_RULE.freeThreshold) return 0;
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error("API 錯誤：" + res.status + " " + text);
-      }
-      return res.json();
-    }
+  // 宅配 / 超商
+  if (shipType === "home") return SHIPPING_RULE.homeFee;
+  return SHIPPING_RULE.storeFee; // 711 / family
+}
 
-    async function apiGet(path) {
-      const res = await fetch(API_BASE + path);
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error("API 錯誤：" + res.status + " " + text);
-      }
-      return res.json();
-    }
+// =========================================================
+// Cart UI helpers
+// =========================================================
+function getCartCount() {
+  return cartItems.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+}
 
-    function scrollToSection(id) {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
+function updateCartButtonCount() {
+  const btn = document.querySelector('button.btn-primary[onclick*="scrollToSection(\'cart\')"]');
+  if (!btn) return;
+  btn.textContent = `查看購物車（${getCartCount()}）`;
+}
 
-    /* =========================================================
-      B) 商品資料與篩選狀態
-    ========================================================= */
-    let products = [];
-    let currentCategory = "all";
-    let currentKeyword = "";
+function renderCartListUI() {
+  const cartListEl = document.getElementById("cartList");
+  if (!cartListEl) return;
 
-    const productGrid = document.getElementById("productGrid");
-    const productEmptyHint = document.getElementById("productEmptyHint");
-    const heroSearchInput = document.getElementById("heroSearchInput");
-
-    async function loadProducts() {
-      try {
-        const data = await apiGet("/api/products");
-        const list = data.products || data.data || [];
-        products = Array.isArray(list) ? list : [];
-      } catch (err) {
-        console.error("載入商品失敗", err);
-        products = [];
-        alert("載入商品失敗，請稍後再試一次，或確認後端 /api/products 是否有開啟。");
-      }
-    }
-
-    /* =========================================================
-      C) 分類切換
-    ========================================================= */
-    const categoryChips = document.querySelectorAll(".category-chip");
-    categoryChips.forEach((chip) => {
-      chip.addEventListener("click", () => {
-        categoryChips.forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        currentCategory = chip.dataset.category || "all";
-        renderProductGrid();
-      });
-    });
-
-    /* =========================================================
-      D) 搜尋
-    ========================================================= */
-    if (heroSearchInput) {
-      heroSearchInput.addEventListener("input", () => {
-        const value = heroSearchInput.value || "";
-        currentKeyword = value;
-        renderProductGrid();
-      });
-
-      heroSearchInput.addEventListener("focus", () => {
-        scrollToSection("products");
-      });
-    }
-
-    /* =========================================================
-      E) 購物車狀態
-    ========================================================= */
-    let cartItems = [];
-    let cartCount = 0;
-    const cartBtnTop = document.querySelector(".nav-action .btn-primary");
-
-    function updateCartBtnText() {
-      if (cartBtnTop) cartBtnTop.textContent = `查看購物車（${cartCount}）`;
-    }
-
-    function calcCartTotal() {
-      return cartItems.reduce((sum, it) => {
-        const price = typeof it.price === "number" ? it.price : 0;
-        return sum + price * it.qty;
-      }, 0);
-    }
-
-    function addToCart(productId, specKey, qty) {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
-
-      const specList = product.specs || [];
-      let useSpec = specList[0];
-
-      if (specKey) {
-        const found = specList.find((s) => s.key === specKey);
-        if (found) useSpec = found;
-      }
-
-      if (!useSpec) useSpec = { key: "default", label: "預設款" };
-
-      qty = Number(qty) || 1;
-      if (qty < 1) qty = 1;
-
-      if (typeof useSpec.stock === "number") {
-        const currentInCartSpec = cartItems
-          .filter((it) => it.productId === productId && it.specKey === useSpec.key)
-          .reduce((sum, it) => sum + it.qty, 0);
-
-        if (currentInCartSpec + qty > useSpec.stock) {
-          const remain = useSpec.stock - currentInCartSpec;
-          alert(
-            `「${product.name} - ${useSpec.label}」庫存不足，` +
-            `目前最多還能加 ${remain < 0 ? 0 : remain} 件。`
-          );
-          return;
-        }
-      }
-
-      const exist = cartItems.find(
-        (item) => item.productId === productId && item.specKey === useSpec.key
-      );
-
-      if (exist) {
-        exist.qty += qty;
-      } else {
-        cartItems.push({
-          productId,
-          specKey: useSpec.key,
-          name: product.name,
-          specLabel: useSpec.label,
-          price: product.price,
-          qty,
-        });
-      }
-
-      cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
-      updateCartBtnText();
-      renderCart();
-    }
-
-    function removeCartItem(index) {
-      if (index < 0 || index >= cartItems.length) return;
-      cartItems.splice(index, 1);
-      cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
-      updateCartBtnText();
-      renderCart();
-    }
-    window.removeCartItem = removeCartItem;
-
-    function renderCart() {
-      const container = document.getElementById("cartList");
-      if (!container) return;
-
-      if (cartItems.length === 0) {
-        container.innerHTML = "（你的購物車目前是空的）";
-        updateCartSummary();
-        return;
-      }
-
-      let html = '<ul style="padding-left:18px;">';
-
-      cartItems.forEach((item, index) => {
-        const lineTotal = item.price * item.qty;
-        html += `
-          <li style="margin-bottom:4px;">
-            ${item.name}（${item.specLabel}） × ${item.qty}
-            － NT$${lineTotal}
-            <button type="button"
-              onclick="removeCartItem(${index})"
-              style="margin-left:6px;padding:2px 6px;font-size:11px;border-radius:6px;border:1px solid #e0c080;background:#fff9ec;cursor:pointer;">
-              移除
-            </button>
-          </li>
-        `;
-      });
-
-      html += "</ul>";
-      container.innerHTML = html;
-
-      updateCartSummary();
-    }
-
-    function updateCartSummary() {
-      const summary = document.getElementById("cartSummary");
-      if (!summary) return;
-
-      const subtotalEl = document.getElementById("sumSubtotal");
-      const shipEl = document.getElementById("sumShipping");
-      const totalEl = document.getElementById("sumTotal");
-      const hintEl = document.getElementById("shipHint");
-      const shipMethodEl = document.getElementById("checkoutShip");
-
-      const subtotal = calcCartTotal();
-      const freeShipThreshold = 699;
-
-      let shipping = 0;
-      const shipMethod = shipMethodEl ? shipMethodEl.value : "711";
-      if (subtotal === 0) shipping = 0;
-      else if (subtotal >= freeShipThreshold) shipping = 0;
-      else {
-        shipping =
-          shipMethod === "home" ? 100 :
-          shipMethod === "family" ? 60 :
-          60;
-      }
-
-      const total = subtotal + shipping;
-
-      summary.style.display = subtotal > 0 ? "block" : "none";
-      if (subtotalEl) subtotalEl.textContent = `NT$ ${subtotal}`;
-      if (shipEl) shipEl.textContent = `NT$ ${shipping}`;
-      if (totalEl) totalEl.textContent = `NT$ ${total}`;
-
-      if (hintEl) {
-        if (subtotal === 0) hintEl.textContent = "";
-        else if (subtotal >= freeShipThreshold) hintEl.textContent = "已達免運門檻，太棒了～🥳";
-        else hintEl.textContent = `再買 NT$ ${freeShipThreshold - subtotal} 即可免運 💛`;
-      }
-    }
-
-    /* =========================================================
-      G) 商品列表渲染
-    ========================================================= */
-    function renderProductGrid() {
-      if (!productGrid) return;
-      productGrid.innerHTML = "";
-
-      const kw = (currentKeyword || "").trim().toLowerCase();
-
-      const filtered = (products || []).filter((product) => {
-        const cats = product.categories || [];
-        if (currentCategory !== "all" && !cats.includes(currentCategory)) return false;
-        if (!kw) return true;
-
-        const text = [
-          product.name || "",
-          product.subtitle || "",
-          (product.categories || []).join(" "),
-          product.shortDesc || "",
-          product.detailHtml || "",
-          product.code || "",
-        ].join(" ").toLowerCase();
-
-        return text.includes(kw);
-      });
-
-      if (productEmptyHint) productEmptyHint.style.display = filtered.length === 0 ? "block" : "none";
-      if (filtered.length === 0) return;
-
-      filtered.forEach((product) => {
-        const cats = product.categories || [];
-        const specs = product.specs || [];
-        const firstSpec = specs[0];
-
-        const mainImgRaw =
-          product.imageUrl ||
-          (firstSpec && firstSpec.mainImg) ||
-          (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
-          "";
-
-        const mainImg = resolveImgUrl(mainImgRaw);
-
-        const article = document.createElement("article");
-        article.className = "product-card";
-        article.dataset.id = product.id;
-        article.dataset.category = cats.join(" ");
-        article.dataset.selectedSpec = firstSpec ? firstSpec.key : "";
-
-        article.innerHTML = `
-          ${product.tag ? `<div class="product-tag">${product.tag}</div>` : ""}
-          <div class="product-img" data-click="open-detail">
-            ${mainImg ? `<img src="${mainImg}" alt="${product.name}">` : ""}
-          </div>
-          <h4 class="product-name" data-click="open-detail">${product.name}</h4>
-
-          <div class="product-bottom">
-            <div class="product-price-row">
-              <div class="product-price">NT$ ${product.price}</div>
-              <button type="button" class="product-like-btn">♡</button>
-            </div>
-
-            <div class="card-hint" data-click="open-detail">[點圖進入選款]</div>
-
-            <div class="card-action-row">
-              <div class="qty-control">
-                <button type="button" class="qty-btn">−</button>
-                <input type="text" class="qty-input" value="1">
-                <button type="button" class="qty-btn">＋</button>
-              </div>
-              <button type="button" class="btn-cart">🛒 加入</button>
-            </div>
-          </div>
-        `;
-
-        article.querySelectorAll('[data-click="open-detail"]').forEach((el) => {
-          el.addEventListener("click", () => openProduct(product.id));
-        });
-
-        const likeBtn = article.querySelector(".product-like-btn");
-        likeBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          likeBtn.classList.toggle("active");
-          likeBtn.textContent = likeBtn.classList.contains("active") ? "❤" : "♡";
-        });
-
-        const qtyInput = article.querySelector(".qty-input");
-        const qtyBtns = article.querySelectorAll(".qty-btn");
-
-        qtyBtns[0].addEventListener("click", (e) => {
-          e.stopPropagation();
-          let v = parseInt(qtyInput.value || "1", 10);
-          if (isNaN(v) || v < 1) v = 1;
-          qtyInput.value = Math.max(1, v - 1);
-        });
-
-        qtyBtns[1].addEventListener("click", (e) => {
-          e.stopPropagation();
-          let v = parseInt(qtyInput.value || "1", 10);
-          if (isNaN(v) || v < 1) v = 1;
-          qtyInput.value = v + 1;
-        });
-
-        const addBtn = article.querySelector(".btn-cart");
-        const addBtn = article.querySelector(".btn-cart");
-addBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-
-  const qty = parseInt(qtyInput.value || "1", 10) || 1;
-  const specList = product.specs || [];
-
-  // 多款式：先進入詳情頁選款（列表不直接選）
-  if (specList.length > 1) {
-    openProduct(product.id);
+  if (!cartItems.length) {
+    cartListEl.innerHTML = "（你的購物車目前是空的）";
     return;
   }
 
-  const specKey = (specList[0] && specList[0].key) ? specList[0].key : "";
-  addToCart(product.id, specKey, qty);
-});
+  const rows = cartItems.map((item, idx) => {
+    const p = products.find((x) => x.id === item.productId);
+    if (!p) return "";
 
-        productGrid.appendChild(article);
-      });
-    }
+    const spec =
+      (p.specs || []).find((s) => s.key === item.specKey) || null;
 
-    /* =========================================================
-      H) 商品詳情
-    ========================================================= */
-    const productDetailSection = document.getElementById("productDetail");
-    const detailTitleMain = document.getElementById("detailTitleMain");
-    const detailSubtitle = document.getElementById("detailSubtitle");
-    const detailName = document.getElementById("detailName");
-    const detailSub = document.getElementById("detailSub");
-    const detailPrice = document.getElementById("detailPrice");
-    const detailPriceNote = document.getElementById("detailPriceNote");
-    const detailMainImg = document.getElementById("detailMainImg");
-    const detailThumbs = document.getElementById("detailThumbs");
-    const detailSpecs = document.getElementById("detailSpecs");
-    const detailDesc = document.getElementById("detailDesc");
-    const detailQtyInput = document.getElementById("detailQtyInput");
-    const detailQtyMinus = document.getElementById("detailQtyMinus");
-    const detailQtyPlus = document.getElementById("detailQtyPlus");
-    const detailAddBtn = document.getElementById("detailAddBtn");
-    const detailLineBtn = document.getElementById("detailLineBtn");
-    const heroSection = document.querySelector(".hero");
+    const specLabel = spec?.label ? `（${spec.label}）` : "";
+    const price = Number(p.price) || 0;
+    const qty = Number(item.qty) || 0;
+    const lineTotal = price * qty;
 
-    let currentDetailProductId = null;
-    let currentDetailSpecKey = null;
+    return `
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        align-items:flex-start;
+        padding:10px 12px;
+        border-radius:12px;
+        background:#fff;
+        border:1px solid rgba(188,220,255,.8);
+        margin:8px 0;
+      ">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:900;color:#3f3a4f;font-size:13px;word-break:break-word;">
+            ${p.name} ${specLabel}
+          </div>
+          <div style="margin-top:4px;font-size:12px;color:#6c6480;">
+            單價 NT$ ${price}　×　${qty}　＝　<strong>NT$ ${lineTotal}</strong>
+          </div>
+        </div>
 
-    function openProduct(productId) {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
+        <button type="button" data-idx="${idx}" class="cart-remove-btn"
+          style="
+            flex:0 0 auto;
+            border:none;
+            border-radius:999px;
+            padding:6px 10px;
+            cursor:pointer;
+            background:#fff0e8;
+            border:1px solid #f7a27a;
+            color:#b8481e;
+            font-weight:900;
+            font-size:12px;
+          "
+        >刪除</button>
+      </div>
+    `;
+  }).join("");
 
-      currentDetailProductId = productId;
+  cartListEl.innerHTML = rows;
 
-      detailTitleMain.textContent = product.name;
-      detailSubtitle.textContent = product.subtitle ? product.subtitle : "";
-      detailName.textContent = product.name;
-      detailSub.textContent = product.subtitle || "";
-      detailPrice.textContent = product.price;
-      detailPriceNote.textContent = product.priceNote || "";
-      detailDesc.innerHTML = product.detailHtml || "";
-
-      detailSpecs.innerHTML = "";
-      (product.specs || []).forEach((spec, idx) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "pd-spec-btn" + (idx === 0 ? " active" : "");
-        btn.textContent = spec.label;
-        btn.dataset.specKey = spec.key;
-        btn.addEventListener("click", () => setDetailSpec(productId, spec.key));
-        detailSpecs.appendChild(btn);
-      });
-
-      if (product.specs && product.specs[0]) {
-        setDetailSpec(productId, product.specs[0].key);
-      }
-
-      detailQtyInput.value = "1";
-      productDetailSection.style.display = "block";
-
-      if (heroSection) heroSection.style.display = "none";
-      scrollToSection("productDetail");
-    }
-
-    function setDetailSpec(productId, specKey) {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
-
-      const specs = product.specs || [];
-      const spec = specs.find((s) => s.key === specKey) || specs[0];
-      if (!spec) return;
-
-      currentDetailSpecKey = spec.key;
-
-      const mainImgRaw =
-        spec.mainImg ||
-        product.imageUrl ||
-        (spec.thumbs && spec.thumbs[0]) ||
-        "";
-
-      const mainImg = resolveImgUrl(mainImgRaw);
-      detailMainImg.src = mainImg;
-      detailMainImg.alt = `${product.name} ${spec.label}`;
-
-      detailThumbs.innerHTML = "";
-      const thumbList = spec.thumbs && spec.thumbs.length > 0 ? spec.thumbs : [mainImgRaw];
-
-      thumbList.forEach((srcRaw, idx) => {
-        if (!srcRaw) return;
-        const src = resolveImgUrl(srcRaw);
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "pd-thumb-btn" + (idx === 0 ? " active" : "");
-
-        const img = document.createElement("img");
-        img.src = src;
-        img.alt = `${product.name} ${spec.label} 圖片`;
-
-        btn.appendChild(img);
-        btn.addEventListener("click", () => {
-          detailMainImg.src = src;
-          detailThumbs.querySelectorAll(".pd-thumb-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-        });
-
-        detailThumbs.appendChild(btn);
-      });
-
-      detailSpecs.querySelectorAll(".pd-spec-btn").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.specKey === specKey);
-      });
-    }
-
-    function backToProducts() {
-      productDetailSection.style.display = "none";
-      if (heroSection) heroSection.style.display = "block";
-      scrollToSection("products");
-    }
-    window.backToProducts = backToProducts;
-
-    detailQtyMinus.addEventListener("click", () => {
-      let v = parseInt(detailQtyInput.value || "1", 10);
-      if (isNaN(v) || v < 1) v = 1;
-      detailQtyInput.value = Math.max(1, v - 1);
+  cartListEl.querySelectorAll(".cart-remove-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.idx);
+      if (Number.isNaN(idx)) return;
+      cartItems.splice(idx, 1);
+      updateCartSummaryUI();
     });
-
-    detailQtyPlus.addEventListener("click", () => {
-      let v = parseInt(detailQtyInput.value || "1", 10);
-      if (isNaN(v) || v < 1) v = 1;
-      detailQtyInput.value = v + 1;
-    });
-
-    detailAddBtn.addEventListener("click", () => {
-      if (!currentDetailProductId) return;
-      const qty = parseInt(detailQtyInput.value || "1", 10) || 1;
-      addToCart(currentDetailProductId, currentDetailSpecKey, qty);
-    });
-
-    detailLineBtn.addEventListener("click", () => {
-      window.open("https://line.me/R/ti/p/@301gfuh", "_blank");
-    });
-
-    /* =========================================================
-      I) 結帳：送出訂單
-    ========================================================= */
-    const checkoutForm = document.getElementById("checkoutForm");
-    if (checkoutForm) {
-      checkoutForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        if (cartItems.length === 0) {
-          alert("購物車是空的，請先選幾樣小物再來結帳唷！");
-          renderCart();
-          updateCartSummary();
-          scrollToSection("cart");
-          return;
-        }
-
-        const name = document.getElementById("checkoutName").value.trim();
-        const phone = document.getElementById("checkoutPhone").value.trim();
-        const email = document.getElementById("checkoutEmail").value.trim();
-        const lineId = document.getElementById("checkoutLine").value.trim();
-        const address = document.getElementById("checkoutAddress").value.trim();
-        const ship = document.getElementById("checkoutShip").value;
-        const pay = document.getElementById("checkoutPay").value;
-        const note = document.getElementById("checkoutNote").value.trim();
-
-        // ✅ 基本必填
-if (!name || !phone || !email) {
-  alert("姓名、電話、Email 為必填欄位，請再確認一下唷～");
-  return;
+  });
 }
 
-// ✅ 台灣手機：09 + 10 碼
-const phoneDigits = phone.replace(/\D/g, "");
-if (!/^09\d{8}$/.test(phoneDigits)) {
-  alert("手機號碼格式不正確，請輸入 09 開頭的 10 碼手機號碼（例：0912345678）");
-  document.getElementById("checkoutPhone").focus();
-  return;
-}
+// =========================================================
+// 更新購物車摘要（小計/運費/總計/免運提示/規則文字/列表/按鈕數字）
+// =========================================================
+function updateCartSummaryUI() {
+  // 1) 同步免運規則文字（#shippingRuleText）
+  syncShippingRuleText();
 
-// ✅ Email 格式
-if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-  alert("Email 格式不正確，請再確認一下（例：you@gmail.com）");
-  document.getElementById("checkoutEmail").focus();
-  return;
-}
-
-// ✅ 配送方式防呆：超商/宅配都必填地址（超商填門市）
-const addressEl = document.getElementById("checkoutAddress");
-const addr = (address || "").trim();
-if (ship === "home") {
-  if (addr.length < 6) {
-    alert("宅配到府請填寫完整收件地址（至少 6 個字）。");
-    addressEl.focus();
-    return;
+  // 2) 計算小計 subtotal
+  let subtotal = 0;
+  for (const item of cartItems) {
+    const p = products.find((x) => x.id === item.productId);
+    if (!p) continue;
+    subtotal += (Number(p.price) || 0) * (Number(item.qty) || 0);
   }
-} else if (ship === "711" || ship === "family") {
-  if (addr.length < 2) {
-    alert("超商取貨請填寫「門市名稱」（例如：高雄xx門市）。");
-    addressEl.focus();
-    return;
-  }
-}
 
-        const payload = {
-          items: cartItems.map((it) => ({
-            productId: it.productId,
-            specKey: it.specKey,
-            specLabel: it.specLabel,
-            name: it.name,
-            price: it.price,
-            qty: it.qty,
-          })),
-          customer: { name, phone, email, lineId, address, ship, pay, note },
-        };
+  // 3) 取得配送方式（#checkoutShip）
+  const shipType = document.getElementById("checkoutShip")?.value || "711";
 
-        try {
-          const result = await apiPost("/api/orders", payload);
+  // 4) 算運費
+  const shippingFee = calcShipping(subtotal, shipType);
+  const total = subtotal + shippingFee;
 
-          const order = result.order || result.data || result;
-          const orderId = result.orderId || order.id || order.orderId || "（請看後台）";
-          const createdAt = order.createdAt || result.createdAt || "剛剛";
-          const status = order.status || result.status || "new";
+  // 5) 更新 UI
+  const sumSubtotalEl = document.getElementById("sumSubtotal");
+  const sumShippingEl = document.getElementById("sumShipping");
+  const sumTotalEl = document.getElementById("sumTotal");
+  const cartSummaryEl = document.getElementById("cartSummary");
+  const shipHintEl = document.getElementById("shipHint");
 
-          const total =
-            typeof result.totalAmount === "number"
-              ? result.totalAmount
-              : typeof order.totalAmount === "number"
-              ? order.totalAmount
-              : calcCartTotal();
+  if (sumSubtotalEl) sumSubtotalEl.textContent = `NT$ ${subtotal}`;
+  if (sumShippingEl) sumShippingEl.textContent = `NT$ ${shippingFee}`;
+  if (sumTotalEl) sumTotalEl.textContent = `NT$ ${total}`;
 
-          showOrderSuccessNotice({ orderId, createdAt, status, total, email });
-window.location.reload();
-        } catch (err) {
-          console.error("POST /api/orders error", err);
-          alert(
-            "建立訂單時發生錯誤，可能是網路或伺服器暫時有問題，\n" +
-              "請稍後再試一次，或改用蝦皮 / Line 聯絡店主。\n\n" +
-              err.message
-          );
-        }
-      });
-    }
+  if (cartSummaryEl) cartSummaryEl.style.display = cartItems.length ? "block" : "none";
 
-    /* =========================================================
-      J) Hero 產品圖輪播
-    ========================================================= */
-    let heroSlideIndex = 0;
-    let heroSlideTimer = null;
-
-    function pickHeroProducts(list){
-      const arr = Array.isArray(list) ? list.slice() : [];
-      const preferred = arr.filter(p => {
-        const t = String(p.tag || "");
-        return t.includes("主打") || t.includes("熱賣") || t.includes("新品");
-      });
-      return (preferred.length ? preferred : arr).slice(0, 6);
-    }
-
-    function buildHeroSlides(){
-      const slidesEl = document.getElementById("heroBannerSlides");
-      const dotsEl = document.getElementById("heroBannerDots");
-      if (!slidesEl || !dotsEl) return;
-
-      slidesEl.innerHTML = "";
-      dotsEl.innerHTML = "";
-
-      const picked = pickHeroProducts(products);
-
-      if (!picked.length) {
-        slidesEl.innerHTML = `
-          <div class="hero-banner-slide active">
-            <div class="hero-banner-top">
-              <div>
-                <div class="hero-banner-tag">主打商品</div>
-                <div class="hero-banner-title">目前尚未載入商品</div>
-                <div class="hero-banner-sub">請確認後端 /api/products 是否正常回傳。</div>
-              </div>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      picked.forEach((p, idx) => {
-        const specs = p.specs || [];
-        const firstSpec = specs[0];
-
-        const imgRaw =
-          p.imageUrl ||
-          (firstSpec && firstSpec.mainImg) ||
-          (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
-          "";
-
-        const title = p.name || "商品";
-        const sub = p.subtitle || p.shortDesc || "點擊查看商品詳情";
-        const tag = p.tag || "主打商品";
-
-        const slide = document.createElement("div");
-        slide.className = "hero-banner-slide" + (idx === 0 ? " active" : "");
-        slide.innerHTML = `
-          <div class="hero-banner-top">
-            <div>
-              <div class="hero-banner-tag">${tag}</div>
-              <div class="hero-banner-title">${title}</div>
-              <div class="hero-banner-sub">${sub}</div>
-            </div>
-          </div>
-
-          <div class="hero-banner-media" role="button" aria-label="開啟商品詳情">
-            ${imgRaw ? `<img src="${resolveImgUrl(imgRaw)}" alt="${title}">` : ""}
-          </div>
-
-          <div class="hero-banner-cta">
-            <button type="button" class="cta-primary">查看商品</button>
-            <button type="button" class="cta-secondary">加入購物車</button>
-          </div>
-        `;
-
-        const media = slide.querySelector(".hero-banner-media");
-        const ctaView = slide.querySelector(".cta-primary");
-        if (media) media.addEventListener("click", () => openProduct(p.id));
-        if (ctaView) ctaView.addEventListener("click", () => openProduct(p.id));
-
-        const ctaAdd = slide.querySelector(".cta-secondary");
-        if (ctaAdd) {
-          ctaAdd.addEventListener("click", () => {
-            const specKey = (p.specs && p.specs[0] && p.specs[0].key) ? p.specs[0].key : "";
-            addToCart(p.id, specKey, 1);
-            scrollToSection("cart");
-          });
-        }
-
-        slidesEl.appendChild(slide);
-
-        const dot = document.createElement("button");
-        dot.type = "button";
-        dot.className = "hero-dot" + (idx === 0 ? " active" : "");
-        dot.setAttribute("aria-label", `第 ${idx + 1} 張 Banner`);
-        dot.addEventListener("click", () => {
-          showHeroSlide(idx);
-          restartHeroTimer();
-        });
-        dotsEl.appendChild(dot);
-      });
-    }
-
-    function showHeroSlide(i){
-      const slides = document.querySelectorAll("#heroBannerSlides .hero-banner-slide");
-      const dots = document.querySelectorAll("#heroBannerDots .hero-dot");
-      if (!slides.length || !dots.length) return;
-
-      const total = slides.length;
-      heroSlideIndex = (i + total) % total;
-
-      slides.forEach((s, idx) => s.classList.toggle("active", idx === heroSlideIndex));
-      dots.forEach((d, idx) => d.classList.toggle("active", idx === heroSlideIndex));
-    }
-
-    function nextHeroSlide(){ showHeroSlide(heroSlideIndex + 1); }
-
-    function restartHeroTimer(){
-      if (heroSlideTimer) clearInterval(heroSlideTimer);
-      heroSlideTimer = setInterval(nextHeroSlide, 6000);
-    }
-
-    function initHeroBanner(){
-      buildHeroSlides();
-      showHeroSlide(0);
-      restartHeroTimer();
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-          if (heroSlideTimer) clearInterval(heroSlideTimer);
-        } else {
-          restartHeroTimer();
-        }
-      });
-    }
-
-    /* =========================================================
-      Lightbox
-    ========================================================= */
-    const lb = document.getElementById("imgLightbox");
-    const lbImg = document.getElementById("lbImg");
-    const lbClose = document.getElementById("lbClose");
-    const lbPrev = document.getElementById("lbPrev");
-    const lbNext = document.getElementById("lbNext");
-    const lbStage = document.getElementById("lbStage");
-
-    let lbList = [];
-    let lbIndex = 0;
-
-    function openLightbox(list, startIndex = 0){
-      lbList = Array.isArray(list) ? list.filter(Boolean) : [];
-      lbIndex = Math.max(0, Math.min(startIndex, lbList.length - 1));
-      if (!lbList.length) return;
-
-      lbImg.src = resolveImgUrl(lbList[lbIndex]);
-      lb.classList.add("open");
-      lb.setAttribute("aria-hidden", "false");
-      document.body.style.overflow = "hidden";
-    }
-
-    function closeLightbox(){
-      lb.classList.remove("open");
-      lb.setAttribute("aria-hidden", "true");
-      document.body.style.overflow = "";
-      lbImg.src = "";
-    }
-
-    function lightboxGo(delta){
-      if (!lbList.length) return;
-      lbIndex = (lbIndex + delta + lbList.length) % lbList.length;
-      lbImg.src = resolveImgUrl(lbList[lbIndex]);
-    }
-
-    lbClose.addEventListener("click", closeLightbox);
-    lb.addEventListener("click", (e) => { if (e.target === lb) closeLightbox(); });
-    lbPrev.addEventListener("click", (e) => { e.stopPropagation(); lightboxGo(-1); });
-    lbNext.addEventListener("click", (e) => { e.stopPropagation(); lightboxGo(1); });
-
-    document.addEventListener("keydown", (e) => {
-      if (!lb.classList.contains("open")) return;
-      if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowLeft") lightboxGo(-1);
-      if (e.key === "ArrowRight") lightboxGo(1);
-    });
-
-    let touchStartX = 0;
-    lbStage.addEventListener("touchstart", (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
-    lbStage.addEventListener("touchend", (e) => {
-      const endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : touchStartX;
-      const dx = endX - touchStartX;
-      if (Math.abs(dx) > 40) dx > 0 ? lightboxGo(-1) : lightboxGo(1);
-    }, { passive: true });
-
-    if (detailMainImg) {
-      detailMainImg.style.cursor = "zoom-in";
-      detailMainImg.addEventListener("click", () => {
-        const p = products.find(x => x.id === currentDetailProductId);
-        if (!p) return;
-
-        const spec = (p.specs || []).find(s => s.key === currentDetailSpecKey) || (p.specs || [])[0];
-        const thumbs = (spec && spec.thumbs && spec.thumbs.length) ? spec.thumbs : [];
-
-        const currentSrcRaw = (spec && spec.mainImg) ? spec.mainImg : (p.imageUrl || "");
-        const list = thumbs.length ? thumbs : [currentSrcRaw];
-
-        const currentResolved = resolveImgUrl(currentSrcRaw);
-        let start = 0;
-        for (let i = 0; i < list.length; i++){
-          if (resolveImgUrl(list[i]) === currentResolved) { start = i; break; }
-        }
-        openLightbox(list, start);
-      });
-    }
-
-    lbStage.addEventListener("wheel", (e) => {
-      if (!lb.classList.contains("open")) return;
-      e.preventDefault();
-      if (e.deltaY > 0) lightboxGo(1);
-      else lightboxGo(-1);
-    }, { passive: false });
-
-    /* =========================================================
-      K) 初始化
-    ========================================================= */
-    async function initPage() {
-      updateCartBtnText();
-      await loadProducts();
-
-      currentCategory = "all";
-      currentKeyword = "";
-
-      renderProductGrid();
-      renderCart();
-      updateCartSummary();
-
-      const checkoutShipEl = document.getElementById("checkoutShip");
-      if (checkoutShipEl) checkoutShipEl.addEventListener("change", () => updateCartSummary());
-
-      initHeroBanner();
-    }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initPage);
+  // 6) 免運提示
+  if (shipHintEl) {
+    if (subtotal >= SHIPPING_RULE.freeThreshold) {
+      shipHintEl.textContent = "🎉 已達免運門檻！";
     } else {
-      initPage();
+      const diff = SHIPPING_RULE.freeThreshold - subtotal;
+      shipHintEl.textContent = `再買 NT$${diff} 即可免運 🚚`;
     }
-
-
-
-// ===== Lead time (10-15 days) reminder =====
-function cartHasLeadtimeItem(cartItems) {
-  return cartItems.some(it => it.tag === 'leadtime_10_15');
-}
-
-function updateLeadtimeWarning(cartItems) {
-  const box = document.getElementById('leadtime-warning');
-  if (!box) return;
-  if (cartHasLeadtimeItem(cartItems)) box.style.display = 'block';
-  else box.style.display = 'none';
-}
-
-// Hook into renderCart if exists
-if (typeof renderCart === 'function') {
-  const _renderCart = renderCart;
-  renderCart = function(...args) {
-    const res = _renderCart.apply(this, args);
-    try {
-      updateLeadtimeWarning(window.cart || []);
-    } catch {}
-    return res;
   }
+
+  // 7) 補：購物車列表 & 按鈕數量
+  renderCartListUI();
+  updateCartButtonCount();
 }
 
-// Hook before order submit
-if (typeof submitOrder === 'function') {
-  const _submitOrder = submitOrder;
-  submitOrder = async function(...args) {
-    try {
-      if (cartHasLeadtimeItem(window.cart || [])) {
-        const ok = confirm('本訂單包含較長備貨時間（10–15 天出貨）之商品，下單即表示同意等待備貨完成後出貨。');
-        if (!ok) return;
-      }
-    } catch {}
-    return _submitOrder.apply(this, args);
-  }
-}
+// =========================================================
+// 加入購物車（同商品同款式 → 合併數量）
+// =========================================================
+detailAddBtn.onclick = () => {
+  if (!currentDetailProductId) return;
 
+  // 數量（最少 1）
+  const qty = Math.max(1, parseInt(detailQtyInput?.value, 10) || 1);
 
+  // 沒有款式時給一個預設 key
+  const specKey = currentDetailSpecKey || "__default__";
 
-// ===== Split order ids display helper =====
-function formatOrderIds(resp) {
-  if (!resp) return '';
-  const ids = Array.isArray(resp.splitIds) ? resp.splitIds : (resp.id ? [resp.id] : []);
-  if (ids.length <= 1) return ids[0] || '';
-  return ids.join('、');
-}
+  const existing = cartItems.find(
+    (x) => x.productId === currentDetailProductId && x.specKey === specKey
+  );
 
-
-// ✅ 結帳欄位防呆：依配送方式提示地址/門市
-function updateCheckoutAddressHint() {
-  const shipEl = document.getElementById("checkoutShip");
-  const addrLabel = document.querySelector('label[for="checkoutAddress"]');
-  const hintEl = document.getElementById("checkoutAddressHint");
-  const addrEl = document.getElementById("checkoutAddress");
-  if (!shipEl || !addrLabel || !hintEl || !addrEl) return;
-
-  const ship = shipEl.value;
-  if (ship === "home") {
-    addrLabel.textContent = "收件地址（宅配必填）";
-    addrEl.placeholder = "例：高雄市○○區○○路○段○號○樓";
-    hintEl.textContent = "宅配到府：請填完整地址（必填）。";
-  } else if (ship === "711") {
-    addrLabel.textContent = "7-11 門市名稱（必填）";
-    addrEl.placeholder = "例：高雄○○門市（可加區域更好）";
-    hintEl.textContent = "超商取貨：請填門市名稱（必填）。";
-  } else if (ship === "family") {
-    addrLabel.textContent = "全家 門市名稱（必填）";
-    addrEl.placeholder = "例：高雄○○店／○○門市";
-    hintEl.textContent = "超商取貨：請填門市名稱（必填）。";
+  if (existing) {
+    existing.qty += qty;
   } else {
-    addrLabel.textContent = "收件地址 / 超商門市（必填）";
-    hintEl.textContent = "請填寫：超商（7-11/全家）請填「門市名稱」；宅配請填完整地址。";
+    cartItems.push({
+      productId: currentDetailProductId,
+      specKey,
+      qty,
+    });
   }
+
+  alert("已加入購物車！");
+  updateCartSummaryUI();
+};
+// =========================================================
+// Hero Banner：用所有商品「隨機順序」建立輪播（完整版）
+// =========================================================
+function buildHeroFromProducts() {
+  const slidesEl = document.getElementById("heroBannerSlides");
+  const dotsEl = document.getElementById("heroBannerDots");
+  if (!slidesEl || !dotsEl) return;
+  if (!products.length) return;
+
+  const HERO_LIMIT = 6; // ⭐ Hero 最多顯示幾個商品
+  const STORAGE_KEY = "hero_product_order_v1";
+
+  slidesEl.innerHTML = "";
+  dotsEl.innerHTML = "";
+
+  // 1️⃣ 只優先顯示有 tag 的商品（沒 tag 才 fallback 全部）
+  const source = products.filter(p => p.tag && String(p.tag).trim() !== "");
+  const baseList = source.length ? source : products;
+
+  // 2️⃣ 使用者固定隨機順序
+  let order = [];
+  try {
+    order = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {}
+
+  if (!order.length) {
+    order = baseList.map(p => p.id);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+  }
+
+  const shuffled = order
+    .map(id => baseList.find(p => p.id === id))
+    .filter(Boolean)
+    .slice(0, HERO_LIMIT);
+
+  // 3️⃣ 建立 slide
+  shuffled.forEach((p, i) => {
+    const imgRaw =
+      p.imageUrl ||
+      p.specs?.[0]?.mainImg ||
+      p.specs?.[0]?.thumbs?.[0] ||
+      "";
+
+    const img = resolveImgUrl(imgRaw);
+
+    const ctaText =
+      p.tag?.includes("熱") ? "🔥 馬上搶購" :
+      p.tag?.includes("新") ? "🆕 立即看看" :
+      "查看商品";
+
+    const slide = document.createElement("div");
+    slide.className = "hero-banner-slide" + (i === 0 ? " active" : "");
+    slide.dataset.id = p.id;
+
+    slide.innerHTML = `
+      ${img ? `<img src="${img}" alt="${p.name}">` : ""}
+      ${p.tag ? `<span class="hero-tag">${p.tag}</span>` : ""}
+      <div class="hero-content">
+        <h2>${p.name}</h2>
+        ${p.subtitle ? `<p>${p.subtitle}</p>` : ""}
+        <button class="cta-primary">${ctaText}</button>
+      </div>
+    `;
+
+    slidesEl.appendChild(slide);
+
+    const dot = document.createElement("span");
+    dot.className = "hero-dot" + (i === 0 ? " active" : "");
+    dotsEl.appendChild(dot);
+  });
+
+  // 4️⃣ 最後一張：查看全部商品
+  const moreSlide = document.createElement("div");
+  moreSlide.className = "hero-banner-slide";
+  moreSlide.innerHTML = `
+    <div class="hero-content center">
+      <h2>看看全部商品</h2>
+      <button class="cta-secondary">前往商品列表 →</button>
+    </div>
+  `;
+  slidesEl.appendChild(moreSlide);
+
+  const moreDot = document.createElement("span");
+  moreDot.className = "hero-dot";
+  dotsEl.appendChild(moreDot);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const shipEl = document.getElementById("checkoutShip");
-  if (shipEl) shipEl.addEventListener("change", updateCheckoutAddressHint);
-  updateCheckoutAddressHint();
-});
+
+/* =========================================================
+   G) Hero Banner（只開詳情）
+========================================================= */
+function initHeroBanner() {
+  const slidesEl = document.getElementById("heroBannerSlides");
+  const dotsEl = document.getElementById("heroBannerDots");
+  if (!slidesEl || !dotsEl) return;
+
+  const AUTOPLAY_MS = 4000;
+
+  function getSlides() {
+    return Array.from(slidesEl.querySelectorAll(".hero-banner-slide"));
+  }
+  function getDots() {
+    return Array.from(dotsEl.querySelectorAll(".hero-dot"));
+  }
+
+  let index = 0;
+  let timer = null;
+
+function setActive(nextIndex) {
+  const slides = getSlides();
+  const dots = getDots();
+  if (!slides.length) return;
+
+  // ⭐ 如果滑到最後一張（查看全部）→ 下一次回第一張
+  if (nextIndex >= slides.length) nextIndex = 0;
+  if (nextIndex < 0) nextIndex = slides.length - 1;
+
+  index = nextIndex;
+
+  slides.forEach((s, i) => s.classList.toggle("active", i === index));
+  dots.forEach((d, i) => d.classList.toggle("active", i === index));
+}
+
+
+  function startAuto() {
+    stopAuto();
+    timer = setInterval(() => setActive(index + 1), AUTOPLAY_MS);
+  }
+
+  function stopAuto() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  // ✅ 1) CTA 按鈕（事件委派）→ 開商品詳情
+  slidesEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".cta-primary, .cta-secondary");
+    if (!btn) return;
+    const id = btn.closest(".hero-banner-slide")?.dataset?.id;
+    if (id) openProduct(Number(id));
+  });
+
+  // ✅ 2) 點 dot 切換（也會同步 active）
+  dotsEl.addEventListener("click", (e) => {
+    const dot = e.target.closest(".hero-dot");
+    if (!dot) return;
+
+    const dots = getDots();
+    const idx = dots.indexOf(dot);
+    if (idx >= 0) {
+      setActive(idx);
+      startAuto(); // 點了就重置計時
+    }
+  });
+
+  // ✅ 3) 手機左右滑切換（swipe）
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+  const SWIPE_MIN_X = 40;
+  const SWIPE_MAX_Y = 60;
+
+  const banner = slidesEl.closest(".hero-banner") || slidesEl;
+
+  banner.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".cta-primary, .cta-secondary")) return; // 避免按鈕誤判
+    if (!e.touches || e.touches.length !== 1) return;
+    tracking = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  banner.addEventListener("touchend", (e) => {
+    if (!tracking) return;
+    tracking = false;
+
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+
+    if (Math.abs(dy) > SWIPE_MAX_Y) return;
+    if (Math.abs(dx) < SWIPE_MIN_X) return;
+
+    if (dx < 0) setActive(index + 1);  // 左滑下一張
+    else setActive(index - 1);         // 右滑上一張
+
+    startAuto();
+  }, { passive: true });
+
+  // ✅ 4) 滑鼠移入停止 / 移出繼續（桌機體驗）
+  banner.addEventListener("mouseenter", stopAuto);
+  banner.addEventListener("mouseleave", startAuto);
+
+  // ✅ 初始化 active（如果你 HTML 第 0 張已經有 active，也不衝突）
+  setActive(0);
+  startAuto();
+}
+
+
+
+/* =========================================================
+   H) 初始化（✅ 修掉你巢狀 initPage 的 bug）
+========================================================= */
+async function initPage() {
+  await loadProducts();
+    // ⭐ 先用商品建立 Hero 輪播（隨機）
+  buildHeroFromProducts();
+  renderProductGrid();
+  initHeroBanner();
+
+  // ✅ 初次同步一次（購物車目前空也沒關係）
+  updateCartSummaryUI();
+
+  // ✅ 配送方式變更 → 重新計算運費/免運提示
+  const shipSel = document.getElementById("checkoutShip");
+  if (shipSel) shipSel.addEventListener("change", updateCartSummaryUI);
+}
+
+document.addEventListener("DOMContentLoaded", initPage);
+

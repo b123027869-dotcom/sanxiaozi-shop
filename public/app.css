@@ -1,6 +1,6 @@
-/* ===== SANXIAOZI: Product grid safe layout ===== */
+/* ===== SANXIAOZI: Product grid safe layout (enhanced) ===== */
 
-/* Default: desktop */
+/* Grid */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -23,15 +23,30 @@
   }
 }
 @media (max-width: 480px) {
-  .product-grid {
-    gap: 10px;
-  }
+  .product-grid { gap: 10px; }
 }
 
-/* Prevent overflow */
+/* Prevent overflow (card + children) */
 .product-card {
   min-width: 0;
   max-width: 100%;
+}
+.product-card * {
+  min-width: 0;
+}
+
+/* Images never overflow */
+.product-img img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Title wrapping: avoid pushing layout */
+.product-name {
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* List hint under price */
@@ -40,4 +55,13 @@
   font-size: 12px;
   color: #9a7641;
   line-height: 1.2;
+}
+
+/* Optional: make cards visually aligned (nice grid) */
+.product-card {
+  display: flex;
+  flex-direction: column;
+}
+.product-bottom {
+  margin-top: auto; /* bottom area stays aligned */
 }

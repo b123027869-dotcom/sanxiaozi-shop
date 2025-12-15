@@ -17,6 +17,8 @@
   -->
 
   <style>
+  
+  
 /* =========================================================
   0) Reset / Base
 ========================================================= */
@@ -160,23 +162,26 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 
 .hero-banner{
   position:relative;
-  border-radius:26px;          /* 圓角稍微更大 */
+  border-radius:26px;
   overflow:hidden;
   border:1px solid rgba(188,220,255,.75);
   background:linear-gradient(180deg,#ffffff,#fffdf3);
   box-shadow:0 14px 36px rgba(118,165,228,.22);
 
-  height:500px;                /* ⭐ 框架整體變高（上下變大） */
-  padding:20px;                /* ⭐ 框架「內距」變大（四邊留白） */
+  height:500px;
+  padding:20px;
 
   display:flex;
   flex-direction:column;
   align-self:start;
-}des{
+}
+
+.hero-banner-slides{
   position:relative;
   flex:1;
   min-height:0;
 }
+
 .hero-banner-slide{
   position:absolute;
   inset:0;
@@ -231,16 +236,18 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .hero-banner-media img{
   width:100%;
   height:100%;
-  object-fit:cover;   /* ← 關鍵只有這行 */
+  object-fit:cover;
   display:block;
   background:#fff;
 }
 
+.hero-banner-cta{
   margin-top:auto;
   display:flex;
   gap:10px;
   flex-wrap:wrap;
 }
+
 .hero-banner-cta button{
   padding:9px 12px;
   border-radius:999px;
@@ -703,6 +710,117 @@ footer{
   .hero-banner-media{ max-height: 320px; } /* 原本約 230，手機加高 */
 }
 
+.hero-banner{
+  touch-action: pan-y; /* 允許上下捲動，仍可偵測左右滑 */
+}
+
+/* =========================================================
+   Hero Banner - Mobile Height
+========================================================= */
+@media (max-width: 768px) {
+  .hero-banner {
+    height: 320px;       /* 原本通常 420~500，這個比較像蝦皮 */
+  }
+  .hero-banner-slide img {
+    object-fit: cover;
+  }
+}
+
+/* =========================================================
+   Hero Banner - Fade Animation
+========================================================= */
+.hero-banner-slide {
+  opacity: 0;
+  transition: opacity .6s ease;
+  pointer-events: none;
+}
+
+.hero-banner-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* =========================================================
+   Hero Tag
+========================================================= */
+.hero-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 999px;
+  background: #ff5a5a;
+  color: #fff;
+  z-index: 5;
+  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+}
+
+.hero-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 999px;
+  background: #ff5a5a;
+  color: #fff;
+  z-index: 5;
+  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+}
+
+/* =========================================================
+   Product Detail Image Fix（主圖過大修正）
+========================================================= */
+
+/* 商品詳情整體不要被圖片撐爆 */
+#productDetail {
+  scroll-margin-top: 80px; /* 避免被 header 吃掉 */
+}
+
+/* 主圖容器 */
+#detailMainImg {
+  width: 100%;
+  max-height: 45vh;           /* ⭐ 關鍵：高度限制為螢幕 45% */
+  object-fit: contain;        /* 保留比例、不裁切 */
+  border-radius: 14px;
+  background: #fff;
+  display: block;
+  margin: 0 auto 12px auto;   /* 底部留空，讓下面內容露出 */
+}
+
+/* 桌機再小一點（更舒服） */
+@media (min-width: 1024px) {
+  #detailMainImg {
+    max-height: 360px;        /* 桌機固定高度 */
+  }
+}
+
+/* 縮圖區不要被擠走 */
+#detailThumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+#detailThumbs img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+#detailThumbs img:hover {
+  border-color: #ffb703;
+}
+
+
 </style>
 </head>
 
@@ -737,12 +855,11 @@ footer{
       Hero（首頁 Banner / 搜尋 / 主打輪播）
     ========================================================= -->
     <section class="hero" aria-label="首頁主視覺">
-      <div class="hero-top">
-        <div style="font-size:14px;color:#9a7641;">
-          歡迎來到 <strong>三小隻日常百貨</strong>
-        </div>
-
-        </div>
+<div class="hero-top">
+  <div style="font-size:14px;color:#9a7641;">
+    歡迎來到 <strong>三小隻日常百貨</strong>
+  </div>
+</div>
 
       <div class="hero-main">
         <div>
@@ -791,25 +908,20 @@ footer{
         </aside>
       </div>
     
-    <!-- =========================================================
-      搜尋（移到商品分類上方，手機更好用）
-    ========================================================= -->
-    </div>
-
-</section>
-
-    <div class="search-strip" aria-label="商品搜尋">
-      <div class="hero-search">
-          <span class="hero-search-icon">🔍</span>
-          <input
-            id="heroSearchInput"
-            type="search"
-            placeholder="想找什麼小物？例：帆布袋、馬克杯、桌上小物…"
-          />
-        </div>
-
-
-
+<!-- =========================================================
+  搜尋（移到商品分類上方，手機更好用）
+========================================================= -->
+<div class="search-strip" aria-label="商品搜尋">
+  <div class="hero-search">
+    <span class="hero-search-icon">🔍</span>
+    <input
+      id="heroSearchInput"
+      type="search"
+      placeholder="想找什麼小物？例：帆布袋、馬克杯、桌上小物…"
+    />
+  </div>
+</div>
+<!-- ✅ close search-strip -->
     <!-- =========================================================
       商品分類
     ========================================================= -->
@@ -936,7 +1048,11 @@ footer{
           <span>小計</span><strong id="sumSubtotal">NT$ 0</strong>
         </div>
         <div style="display:flex;justify-content:space-between;margin:4px 0;">
-          <span>運費 <span style="font-size:13px;color:#9a7641;">(<strong style=\"font-weight:900;\">\1</strong>)</span></span>
+         <span>運費 <span style="font-size:13px;color:#9a7641;">
+  (<strong id="shippingRuleText" style="font-weight:900;"></strong>)
+</span></span>
+
+
           <strong id="sumShipping">NT$ 0</strong>
         </div>
         <div style="display:flex;justify-content:space-between;margin:6px 0;border-top:1px dashed #f0d9a4;padding-top:8px;">
@@ -1282,1243 +1398,8 @@ footer{
     <div class="lb-hint" id="lbHint">點擊空白處或按 ESC 關閉｜左右鍵切換｜手機可左右滑</div>
   </div>
 
-  <script>
-    /* =========================================================
-      A) 常數設定（圖片 / API）
-    ========================================================= */
-    const SUPABASE_IMG_BASE =
-      "https://ckqdimygblkasofycwvr.supabase.co/storage/v1/object/public/product-images/";
-
-    function resolveImgUrl(url) {
-      if (!url) return "";
-      if (/^https?:\/\//i.test(url)) return url;
-      return SUPABASE_IMG_BASE + url.replace(/^\/+/, "");
-    }
-
-// Shopee 下單連結（用於「貨到付款」引導）
-    const SHOPEE_COD_URL = "https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263";
-
-    const API_BASE =
-      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:3000'
-        : location.origin;
-
-    async function apiPost(path, data) {
-      const res = await fetch(API_BASE + path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error("API 錯誤：" + res.status + " " + text);
-      }
-      return res.json();
-    }
-
-    async function apiGet(path) {
-      const res = await fetch(API_BASE + path);
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error("API 錯誤：" + res.status + " " + text);
-      }
-      return res.json();
-    }
-
-    function scrollToSection(id) {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
-
-    /* =========================================================
-      B) 商品資料與篩選狀態
-    ========================================================= */
-    let products = [];
-    let currentCategory = "all";
-    let currentKeyword = "";
-
-    const productGrid = document.getElementById("productGrid");
-    const productEmptyHint = document.getElementById("productEmptyHint");
-    const heroSearchInput = document.getElementById("heroSearchInput");
-
-    async function loadProducts() {
-      try {
-        const data = await apiGet("/api/products");
-        const list = data.products || data.data || [];
-        products = Array.isArray(list) ? list : [];
-      } catch (err) {
-        console.error("載入商品失敗", err);
-        products = [];
-        alert("載入商品失敗，請稍後再試一次，或確認後端 /api/products 是否有開啟。");
-      }
-    }
-
-    /* =========================================================
-      C) 分類切換
-    ========================================================= */
-    const categoryChips = document.querySelectorAll(".category-chip");
-    categoryChips.forEach((chip) => {
-      chip.addEventListener("click", () => {
-        categoryChips.forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        currentCategory = chip.dataset.category || "all";
-        renderProductGrid();
-      });
-    });
-
-    /* =========================================================
-      D) 搜尋
-    ========================================================= */
-    if (heroSearchInput) {
-      heroSearchInput.addEventListener("input", () => {
-        const value = heroSearchInput.value || "";
-        currentKeyword = value;
-        renderProductGrid();
-      });
-
-      heroSearchInput.addEventListener("focus", () => {
-        scrollToSection("products");
-      });
-    }
-
-    /* =========================================================
-      E) 購物車狀態
-    ========================================================= */
-    let cartItems = [];
-    let cartCount = 0;
-    const cartBtnTop = document.querySelector(".nav-action .btn-primary");
-
-    function updateCartBtnText() {
-      if (cartBtnTop) cartBtnTop.textContent = `查看購物車（${cartCount}）`;
-    }
-
-    function calcCartTotal() {
-      return cartItems.reduce((sum, it) => {
-        const price = typeof it.price === "number" ? it.price : 0;
-        return sum + price * it.qty;
-      }, 0);
-    }
-
-    function addToCart(productId, specKey, qty) {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
-
-      const specList = product.specs || [];
-      let useSpec = specList[0];
-
-      if (specKey) {
-        const found = specList.find((s) => s.key === specKey);
-        if (found) useSpec = found;
-      }
-
-      if (!useSpec) useSpec = { key: "default", label: "預設款" };
-
-      qty = Number(qty) || 1;
-      if (qty < 1) qty = 1;
-
-      if (typeof useSpec.stock === "number") {
-        const currentInCartSpec = cartItems
-          .filter((it) => it.productId === productId && it.specKey === useSpec.key)
-          .reduce((sum, it) => sum + it.qty, 0);
-
-        if (currentInCartSpec + qty > useSpec.stock) {
-          const remain = useSpec.stock - currentInCartSpec;
-          alert(
-            `「${product.name} - ${useSpec.label}」庫存不足，` +
-            `目前最多還能加 ${remain < 0 ? 0 : remain} 件。`
-          );
-          return;
-        }
-      }
-
-      const exist = cartItems.find(
-        (item) => item.productId === productId && item.specKey === useSpec.key
-      );
-
-      if (exist) {
-        exist.qty += qty;
-      } else {
-        cartItems.push({
-          productId,
-          specKey: useSpec.key,
-          name: product.name,
-          specLabel: useSpec.label,
-          price: product.price,
-          qty,
-        });
-      }
-
-      cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
-      updateCartBtnText();
-      renderCart();
-    }
-
-    function removeCartItem(index) {
-      if (index < 0 || index >= cartItems.length) return;
-      cartItems.splice(index, 1);
-      cartCount = cartItems.reduce((sum, it) => sum + it.qty, 0);
-      updateCartBtnText();
-      renderCart();
-    }
-    window.removeCartItem = removeCartItem;
-
-    function renderCart() {
-      const container = document.getElementById("cartList");
-      if (!container) return;
-
-      if (cartItems.length === 0) {
-        container.innerHTML = "（你的購物車目前是空的）";
-        updateCartSummary();
-        return;
-      }
-
-      let html = '<ul style="padding-left:18px;">';
-
-      cartItems.forEach((item, index) => {
-        const lineTotal = item.price * item.qty;
-        html += `
-          <li style="margin-bottom:4px;">
-            ${item.name}（${item.specLabel}） × ${item.qty}
-            － NT$${lineTotal}
-            <button type="button"
-              onclick="removeCartItem(${index})"
-              style="margin-left:6px;padding:2px 6px;font-size:11px;border-radius:6px;border:1px solid #e0c080;background:#fff9ec;cursor:pointer;">
-              移除
-            </button>
-          </li>
-        `;
-      });
-
-      html += "</ul>";
-      container.innerHTML = html;
-
-      updateCartSummary();
-    }
-
-    function updateCartSummary() {
-      const summary = document.getElementById("cartSummary");
-      if (!summary) return;
-
-      const subtotalEl = document.getElementById("sumSubtotal");
-      const shipEl = document.getElementById("sumShipping");
-      const totalEl = document.getElementById("sumTotal");
-      const hintEl = document.getElementById("shipHint");
-      const shipMethodEl = document.getElementById("checkoutShip");
-
-      const subtotal = calcCartTotal();
-      const freeShipThreshold = 699;
-
-      let shipping = 0;
-      const shipMethod = shipMethodEl ? shipMethodEl.value : "711";
-      if (subtotal === 0) shipping = 0;
-      else if (subtotal >= freeShipThreshold) shipping = 0;
-      else {
-        shipping =
-          shipMethod === "home" ? 100 :
-          shipMethod === "family" ? 60 :
-          60;
-      }
-
-      const total = subtotal + shipping;
-
-      summary.style.display = subtotal > 0 ? "block" : "none";
-      if (subtotalEl) subtotalEl.textContent = `NT$ ${subtotal}`;
-      if (shipEl) shipEl.textContent = `NT$ ${shipping}`;
-      if (totalEl) totalEl.textContent = `NT$ ${total}`;
-
-      if (hintEl) {
-        if (subtotal === 0) hintEl.textContent = "";
-        else if (subtotal >= freeShipThreshold) hintEl.textContent = "已達免運門檻，太棒了～🥳";
-        else hintEl.textContent = `再買 NT$ ${freeShipThreshold - subtotal} 即可免運 💛`;
-      }
-    }
-
-    /* =========================================================
-      G) 商品列表渲染
-    ========================================================= */
-    function renderProductGrid() {
-      if (!productGrid) return;
-      productGrid.innerHTML = "";
-
-      const kw = (currentKeyword || "").trim().toLowerCase();
-
-      const filtered = (products || []).filter((product) => {
-        const cats = product.categories || [];
-        if (currentCategory !== "all" && !cats.includes(currentCategory)) return false;
-        if (!kw) return true;
-
-        const text = [
-          product.name || "",
-          product.subtitle || "",
-          (product.categories || []).join(" "),
-          product.shortDesc || "",
-          product.detailHtml || "",
-          product.code || "",
-        ].join(" ").toLowerCase();
-
-        return text.includes(kw);
-      });
-
-      if (productEmptyHint) productEmptyHint.style.display = filtered.length === 0 ? "block" : "none";
-      if (filtered.length === 0) return;
-
-      filtered.forEach((product) => {
-        const cats = product.categories || [];
-        const specs = product.specs || [];
-        const firstSpec = specs[0];
-
-        const mainImgRaw =
-          product.imageUrl ||
-          (firstSpec && firstSpec.mainImg) ||
-          (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
-          "";
-
-        const mainImg = resolveImgUrl(mainImgRaw);
-
-        const article = document.createElement("article");
-        article.className = "product-card";
-        article.dataset.id = product.id;
-        article.dataset.category = cats.join(" ");
-        article.dataset.selectedSpec = firstSpec ? firstSpec.key : "";
-
-        article.innerHTML = `
-          ${product.tag ? `<div class="product-tag">${product.tag}</div>` : ""}
-          <div class="product-img" data-click="open-detail">
-            ${mainImg ? `<img src="${mainImg}" alt="${product.name}">` : ""}
-          </div>
-          <h4 class="product-name" data-click="open-detail">${product.name}</h4>
-
-          <div class="product-bottom">
-            <div class="product-price-row">
-              <div class="product-price">NT$ ${product.price}</div>
-              <button type="button" class="product-like-btn">♡</button>
-            </div>
-
-            <div class="card-spec-row">
-              ${(specs || [])
-                .map(
-                  (spec, idx) => `
-                    <button type="button"
-                      class="card-spec-btn ${idx === 0 ? "active" : ""}"
-                      data-spec-key="${spec.key}">
-                      ${spec.label}
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
-
-            <div class="card-action-row">
-              <div class="qty-control">
-                <button type="button" class="qty-btn">−</button>
-                <input type="text" class="qty-input" value="1">
-                <button type="button" class="qty-btn">＋</button>
-              </div>
-              <button type="button" class="btn-cart">🛒 加入</button>
-            </div>
-          </div>
-        `;
-
-        article.querySelectorAll('[data-click="open-detail"]').forEach((el) => {
-          el.addEventListener("click", () => openProduct(product.id));
-        });
-
-        const likeBtn = article.querySelector(".product-like-btn");
-        likeBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          likeBtn.classList.toggle("active");
-          likeBtn.textContent = likeBtn.classList.contains("active") ? "❤" : "♡";
-        });
-
-        const specBtns = article.querySelectorAll(".card-spec-btn");
-        specBtns.forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            specBtns.forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
-            article.dataset.selectedSpec = btn.dataset.specKey || "";
-          });
-        });
-
-        const qtyInput = article.querySelector(".qty-input");
-        const qtyBtns = article.querySelectorAll(".qty-btn");
-
-        qtyBtns[0].addEventListener("click", (e) => {
-          e.stopPropagation();
-          let v = parseInt(qtyInput.value || "1", 10);
-          if (isNaN(v) || v < 1) v = 1;
-          qtyInput.value = Math.max(1, v - 1);
-        });
-
-        qtyBtns[1].addEventListener("click", (e) => {
-          e.stopPropagation();
-          let v = parseInt(qtyInput.value || "1", 10);
-          if (isNaN(v) || v < 1) v = 1;
-          qtyInput.value = v + 1;
-        });
-
-        const addBtn = article.querySelector(".btn-cart");
-        addBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const specKey = article.dataset.selectedSpec || "";
-          const qty = parseInt(qtyInput.value || "1", 10) || 1;
-          addToCart(product.id, specKey, qty);
-        });
-
-        productGrid.appendChild(article);
-      });
-    }
-
-    /* =========================================================
-      H) 商品詳情
-    ========================================================= */
-    const productDetailSection = document.getElementById("productDetail");
-    const detailTitleMain = document.getElementById("detailTitleMain");
-    const detailSubtitle = document.getElementById("detailSubtitle");
-    const detailName = document.getElementById("detailName");
-    const detailSub = document.getElementById("detailSub");
-    const detailPrice = document.getElementById("detailPrice");
-    const detailPriceNote = document.getElementById("detailPriceNote");
-    const detailMainImg = document.getElementById("detailMainImg");
-    const detailThumbs = document.getElementById("detailThumbs");
-    const detailSpecs = document.getElementById("detailSpecs");
-    const detailDesc = document.getElementById("detailDesc");
-    const detailQtyInput = document.getElementById("detailQtyInput");
-    const detailQtyMinus = document.getElementById("detailQtyMinus");
-    const detailQtyPlus = document.getElementById("detailQtyPlus");
-    const detailAddBtn = document.getElementById("detailAddBtn");
-    const detailLineBtn = document.getElementById("detailLineBtn");
-    const heroSection = document.querySelector(".hero");
-
-    let currentDetailProductId = null;
-    let currentDetailSpecKey = null;
-
-    function openProduct(productId) {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
-
-      currentDetailProductId = productId;
-
-      detailTitleMain.textContent = product.name;
-      detailSubtitle.textContent = product.subtitle ? product.subtitle : "";
-      detailName.textContent = product.name;
-      detailSub.textContent = product.subtitle || "";
-      detailPrice.textContent = product.price;
-      detailPriceNote.textContent = product.priceNote || "";
-      detailDesc.innerHTML = product.detailHtml || "";
-
-      detailSpecs.innerHTML = "";
-      (product.specs || []).forEach((spec, idx) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "pd-spec-btn" + (idx === 0 ? " active" : "");
-        btn.textContent = spec.label;
-        btn.dataset.specKey = spec.key;
-        btn.addEventListener("click", () => setDetailSpec(productId, spec.key));
-        detailSpecs.appendChild(btn);
-      });
-
-      if (product.specs && product.specs[0]) {
-        setDetailSpec(productId, product.specs[0].key);
-      }
-
-      detailQtyInput.value = "1";
-      productDetailSection.style.display = "block";
-
-      if (heroSection) heroSection.style.display = "none";
-      scrollToSection("productDetail");
-    }
-
-    function setDetailSpec(productId, specKey) {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
-
-      const specs = product.specs || [];
-      const spec = specs.find((s) => s.key === specKey) || specs[0];
-      if (!spec) return;
-
-      currentDetailSpecKey = spec.key;
-
-      const mainImgRaw =
-        spec.mainImg ||
-        product.imageUrl ||
-        (spec.thumbs && spec.thumbs[0]) ||
-        "";
-
-      const mainImg = resolveImgUrl(mainImgRaw);
-      detailMainImg.src = mainImg;
-      detailMainImg.alt = `${product.name} ${spec.label}`;
-
-      detailThumbs.innerHTML = "";
-      const thumbList = spec.thumbs && spec.thumbs.length > 0 ? spec.thumbs : [mainImgRaw];
-
-      thumbList.forEach((srcRaw, idx) => {
-        if (!srcRaw) return;
-        const src = resolveImgUrl(srcRaw);
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "pd-thumb-btn" + (idx === 0 ? " active" : "");
-
-        const img = document.createElement("img");
-        img.src = src;
-        img.alt = `${product.name} ${spec.label} 圖片`;
-
-        btn.appendChild(img);
-        btn.addEventListener("click", () => {
-          detailMainImg.src = src;
-          detailThumbs.querySelectorAll(".pd-thumb-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-        });
-
-        detailThumbs.appendChild(btn);
-      });
-
-      detailSpecs.querySelectorAll(".pd-spec-btn").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.specKey === specKey);
-      });
-    }
-
-    function backToProducts() {
-      productDetailSection.style.display = "none";
-      if (heroSection) heroSection.style.display = "block";
-      scrollToSection("products");
-    }
-    window.backToProducts = backToProducts;
-
-    detailQtyMinus.addEventListener("click", () => {
-      let v = parseInt(detailQtyInput.value || "1", 10);
-      if (isNaN(v) || v < 1) v = 1;
-      detailQtyInput.value = Math.max(1, v - 1);
-    });
-
-    detailQtyPlus.addEventListener("click", () => {
-      let v = parseInt(detailQtyInput.value || "1", 10);
-      if (isNaN(v) || v < 1) v = 1;
-      detailQtyInput.value = v + 1;
-    });
-
-    detailAddBtn.addEventListener("click", () => {
-      if (!currentDetailProductId) return;
-      const qty = parseInt(detailQtyInput.value || "1", 10) || 1;
-      addToCart(currentDetailProductId, currentDetailSpecKey, qty);
-    });
-
-    detailLineBtn.addEventListener("click", () => {
-      window.open("https://line.me/R/ti/p/@301gfuh", "_blank");
-    });
-
-    /* =========================================================
-      I) 結帳：送出訂單
-    ========================================================= */
-    const checkoutForm = document.getElementById("checkoutForm");
-    if (checkoutForm) {
-      checkoutForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        if (cartItems.length === 0) {
-          alert("購物車是空的，請先選幾樣小物再來結帳唷！");
-          renderCart();
-          updateCartSummary();
-          scrollToSection("cart");
-          return;
-        }
-
-        const name = document.getElementById("checkoutName").value.trim();
-        const phone = document.getElementById("checkoutPhone").value.trim();
-        const emailLocalRaw = (document.getElementById("checkoutEmailLocal")?.value || "").trim();
-        const emailDomainSel = document.getElementById("checkoutEmailDomain")?.value || "gmail.com";
-        const emailCustomRaw = (document.getElementById("checkoutEmailCustom")?.value || "").trim();
-
-        // ✅ Email 組合：前半段 + 常用尾碼（或自訂）
-        const emailLocal = emailLocalRaw.replace(/\s+/g, "").replace(/@.*/g, "");
-        const domain = (emailDomainSel === "custom" ? emailCustomRaw : emailDomainSel)
-          .replace(/^@+/, "")
-          .replace(/\s+/g, "");
-        const email = (emailLocal && domain) ? `${emailLocal}@${domain}` : "";
-        const hiddenEmailEl = document.getElementById("checkoutEmail");
-        if (hiddenEmailEl) hiddenEmailEl.value = email;
-        const lineId = document.getElementById("checkoutLine").value.trim();
-        const address = document.getElementById("checkoutAddress").value.trim();
-        const ship = document.getElementById("checkoutShip").value;
-        const pay = document.getElementById("checkoutPay").value;
-        // ✅ 付款方式分流
-        // 1) 貨到付款：不在本站成立訂單，改引導到蝦皮下單（避免棄單造成運費損失）
-        if (pay === "cod") {
-          const ok = confirm(
-            "貨到付款目前僅提供在蝦皮下單（避免棄單造成運費損失）。\n\n" +
-            "按「確定」前往蝦皮下單；按「取消」可改選其他付款方式。"
-          );
-          if (ok) window.open(SHOPEE_COD_URL, "_blank", "noopener,noreferrer");
-          return;
-        }
-
-        // 2) 銀行轉帳：先保留但暫不開放（避免第三方詐騙）
-        if (pay === "transfer") {
-          alert("銀行轉帳目前暫不開放，之後會改成「虛擬帳戶」再上線。\n\n請先改選：信用卡 / LINE Pay，或改走蝦皮下單。");
-          return;
-        }
-
-        const note = document.getElementById("checkoutNote").value.trim();
-
-        // ✅ 基本必填
-if (!name || !phone || !email) {
-  alert("姓名、電話、Email 為必填欄位，請再確認一下唷～");
-  return;
-}
-
-        // ✅ Email 格式防呆
-        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
-        if (!emailOk) {
-          alert("Email 格式看起來不正確，請再確認一下（例如：you@gmail.com）");
-          return;
-        }
-
-
-// ✅ 台灣手機：09 + 10 碼
-const phoneDigits = phone.replace(/\D/g, "");
-if (!/^09\d{8}$/.test(phoneDigits)) {
-  alert("手機號碼格式不正確，請輸入 09 開頭的 10 碼手機號碼（例：0912345678）");
-  document.getElementById("checkoutPhone").focus();
-  return;
-}
-
-// ✅ Email 格式
-if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-  alert("Email 格式不正確，請再確認一下（例：you@gmail.com）");
-  document.getElementById("checkoutEmail").focus();
-  return;
-}
-
-// ✅ 配送方式防呆：超商/宅配都必填地址（超商填門市）
-const addressEl = document.getElementById("checkoutAddress");
-const addr = (address || "").trim();
-if (ship === "home") {
-  if (addr.length < 6) {
-    alert("宅配到府請填寫完整收件地址（至少 6 個字）。");
-    addressEl.focus();
-    return;
-  }
-} else if (ship === "711" || ship === "family") {
-  if (addr.length < 2) {
-    alert("超商取貨請填寫「門市名稱」（例如：高雄xx門市）。");
-    addressEl.focus();
-    return;
-  }
-}
-
-        const payload = {
-          items: cartItems.map((it) => ({
-            productId: it.productId,
-            specKey: it.specKey,
-            specLabel: it.specLabel,
-            name: it.name,
-            price: it.price,
-            qty: it.qty,
-          })),
-          customer: { name, phone, email, lineId, address, ship, pay, note },
-        };
-
-        try {
-          const result = await apiPost("/api/orders", payload);
-
-          const order = result.order || result.data || result;
-          const orderId = result.orderId || order.id || order.orderId || "（請看後台）";
-          const createdAt = order.createdAt || result.createdAt || "剛剛";
-          const status = order.status || result.status || "new";
-
-          const total =
-            typeof result.totalAmount === "number"
-              ? result.totalAmount
-              : typeof order.totalAmount === "number"
-              ? order.totalAmount
-              : calcCartTotal();
-
-          alert(
-            "訂單已建立囉！\n\n" +
-              "訂單編號：" + orderId + "\n" +
-              "建立時間：" + createdAt + "\n" +
-              "訂單狀態：" + status + "\n" +
-              "總金額：NT$ " + total + "\n\n" +
-              "之後可以用「電話 + 訂單編號」在下方訂單查詢區查看進度。\n\n" +
-              "加入官方 LINE：@301gfuh，就可以追蹤訂單、詢問出貨進度喔！"
-          );
-
-          window.location.reload();
-        } catch (err) {
-          console.error("POST /api/orders error", err);
-          alert(
-            "建立訂單時發生錯誤，可能是網路或伺服器暫時有問題，\n" +
-              "請稍後再試一次，或改用蝦皮 / Line 聯絡店主。\n\n" +
-              err.message
-          );
-        }
-      });
-    }
-
-    
-
-// ✅ 結帳欄位防呆：依配送方式提示地址/門市
-function updateCheckoutAddressHint() {
-  const shipEl = document.getElementById("checkoutShip");
-  const addrLabel = document.querySelector('label[for="checkoutAddress"]');
-  const hintEl = document.getElementById("checkoutAddressHint");
-  const addrEl = document.getElementById("checkoutAddress");
-  if (!shipEl || !addrLabel || !hintEl || !addrEl) return;
-
-  const ship = shipEl.value;
-  if (ship === "home") {
-    addrLabel.textContent = "收件地址（宅配必填）";
-    addrEl.placeholder = "例：高雄市○○區○○路○段○號○樓";
-    hintEl.textContent = "宅配到府：請填完整地址（必填）。";
-  } else if (ship === "711") {
-    addrLabel.textContent = "7-11 門市名稱（必填）";
-    addrEl.placeholder = "例：高雄○○門市（可加區域更好）";
-    hintEl.textContent = "超商取貨：請填門市名稱（必填）。";
-  } else if (ship === "family") {
-    addrLabel.textContent = "全家 門市名稱（必填）";
-    addrEl.placeholder = "例：高雄○○店／○○門市";
-    hintEl.textContent = "超商取貨：請填門市名稱（必填）。";
-  } else {
-    addrLabel.textContent = "收件地址 / 超商門市（必填）";
-    hintEl.textContent = "請填寫：超商（7-11/全家）請填「門市名稱」；宅配請填完整地址。";
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const shipEl = document.getElementById("checkoutShip");
-  if (shipEl) shipEl.addEventListener("change", updateCheckoutAddressHint);
-  updateCheckoutAddressHint();
-});
-
-
-
-    /* =========================================================
-      I-2) 結帳 Email 尾碼選單（gmail/yahoo/outlook...）＋ 自訂網域
-    ========================================================= */
-    (function initCheckoutEmailSelector(){
-      const localEl = document.getElementById("checkoutEmailLocal");
-      const domainEl = document.getElementById("checkoutEmailDomain");
-      const customEl = document.getElementById("checkoutEmailCustom");
-      const hintEl = document.getElementById("emailHint");
-      const hiddenEl = document.getElementById("checkoutEmail");
-
-      if (!localEl || !domainEl || !customEl) return;
-
-      function updateVisibility(){
-        const isCustom = domainEl.value === "custom";
-        customEl.style.display = isCustom ? "block" : "none";
-        if (!isCustom) customEl.value = "";
-        updatePreview();
-      }
-
-      function updatePreview(){
-        const local = (localEl.value || "").trim().replace(/\s+/g, "").replace(/@.*/g, "");
-        const domain = ((domainEl.value === "custom") ? (customEl.value || "").trim() : domainEl.value)
-          .replace(/^@+/, "")
-          .replace(/\s+/g, "");
-
-        const email = (local && domain) ? `${local}@${domain}` : "";
-        if (hiddenEl) hiddenEl.value = email;
-
-        if (hintEl) {
-          hintEl.textContent = email
-            ? `將使用：${email}（用於寄送訂單明細與出貨通知）`
-            : "會寄送訂單明細與出貨通知。";
-        }
-      }
-
-      // 防止在 local part 輸入 @domain
-      localEl.addEventListener("input", () => {
-        const v = (localEl.value || "");
-        if (v.includes("@")) localEl.value = v.split("@")[0];
-        updatePreview();
-      });
-
-      domainEl.addEventListener("change", updateVisibility);
-      customEl.addEventListener("input", updatePreview);
-
-      updateVisibility();
-    })();
-
-
-
-    /* =========================================================
-      I-3) 結帳/訂單查詢：更完整防呆（即時提示、不只 alert）
-    ========================================================= */
-    function ensureMsgEl(inputEl, id, className){
-      if (!inputEl) return null;
-      let el = document.getElementById(id);
-      if (!el) {
-        el = document.createElement("div");
-        el.id = id;
-        el.className = className;
-        inputEl.insertAdjacentElement("afterend", el);
-      }
-      return el;
-    }
-
-    function showError(msgEl, text){
-      if (!msgEl) return;
-      msgEl.textContent = text || "";
-      msgEl.style.display = text ? "block" : "none";
-    }
-
-    function showOk(msgEl, text){
-      if (!msgEl) return;
-      msgEl.textContent = text || "";
-      msgEl.style.display = text ? "block" : "none";
-    }
-
-    function normalizeTwMobile(raw){
-      const d = String(raw || "").replace(/\D/g, "");
-      // 只保留 10 碼
-      return d.slice(0, 10);
-    }
-
-    function isValidTwMobile(raw){
-      const d = String(raw || "").replace(/\D/g, "");
-      return /^09\d{8}$/.test(d);
-    }
-
-    function isValidEmailLoose(email){
-      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(String(email || "").trim());
-    }
-
-    // ---- Checkout live validation
-    (function initCheckoutLiveValidation(){
-      const nameEl = document.getElementById("checkoutName");
-      const phoneEl = document.getElementById("checkoutPhone");
-      const shipEl = document.getElementById("checkoutShip");
-      const addrEl = document.getElementById("checkoutAddress");
-
-      const emailLocalEl = document.getElementById("checkoutEmailLocal");
-      const emailDomainEl = document.getElementById("checkoutEmailDomain");
-      const emailCustomEl = document.getElementById("checkoutEmailCustom");
-      const hiddenEmailEl = document.getElementById("checkoutEmail");
-
-      const errName = ensureMsgEl(nameEl, "errCheckoutName", "field-error");
-      const errPhone = ensureMsgEl(phoneEl, "errCheckoutPhone", "field-error");
-      const errEmail = ensureMsgEl(emailLocalEl || hiddenEmailEl, "errCheckoutEmail", "field-error");
-      const errAddr = ensureMsgEl(addrEl, "errCheckoutAddress", "field-error");
-
-      if (nameEl) {
-        nameEl.addEventListener("input", () => {
-          const v = (nameEl.value || "").trim();
-          showError(errName, v.length >= 2 ? "" : "姓名請至少 2 個字");
-        });
-      }
-
-      if (phoneEl) {
-        phoneEl.addEventListener("input", () => {
-          const normalized = normalizeTwMobile(phoneEl.value);
-          phoneEl.value = normalized;
-          showError(errPhone, isValidTwMobile(normalized) ? "" : "請輸入 09 開頭的 10 碼台灣手機號碼");
-        });
-        phoneEl.addEventListener("blur", () => {
-          const normalized = normalizeTwMobile(phoneEl.value);
-          showError(errPhone, normalized && !isValidTwMobile(normalized) ? "手機格式不正確（例：0912345678）" : "");
-        });
-      }
-
-      function validateAddressByShip(){
-        if (!addrEl || !shipEl) return true;
-        const ship = shipEl.value;
-        const v = (addrEl.value || "").trim();
-
-        if (ship === "home") {
-          const ok = v.length >= 6;
-          showError(errAddr, ok ? "" : "宅配請填完整地址（至少 6 個字）");
-          return ok;
-        }
-
-        // 超商：必填門市
-        const ok = v.length >= 3;
-        showError(errAddr, ok ? "" : "超商取貨請填「門市名稱」（必填）");
-        return ok;
-      }
-
-      if (shipEl) shipEl.addEventListener("change", validateAddressByShip);
-      if (addrEl) addrEl.addEventListener("input", validateAddressByShip);
-
-      function validateEmailNow(){
-        const email = (hiddenEmailEl?.value || "").trim();
-        showError(errEmail, email && isValidEmailLoose(email) ? "" : "Email 格式不正確（例：you@gmail.com）");
-        return !email || isValidEmailLoose(email);
-      }
-      if (emailLocalEl) emailLocalEl.addEventListener("input", validateEmailNow);
-      if (emailDomainEl) emailDomainEl.addEventListener("change", validateEmailNow);
-      if (emailCustomEl) emailCustomEl.addEventListener("input", validateEmailNow);
-
-      // 初始跑一次，避免空提示閃爍
-      validateAddressByShip();
-    })();
-
-    // ---- Order query (前台訂單查詢) + live validation
-    (function initOrderQueryForm(){
-      const form = document.getElementById("orderQueryForm");
-      const phoneEl = document.getElementById("queryPhone");
-      const idEl = document.getElementById("queryOrderId");
-      const resultEl = document.getElementById("orderResult");
-
-      const errPhone = ensureMsgEl(phoneEl, "errQueryPhone", "field-error");
-      const errId = ensureMsgEl(idEl, "errQueryOrderId", "field-error");
-
-      if (phoneEl) {
-        phoneEl.addEventListener("input", () => {
-          const normalized = normalizeTwMobile(phoneEl.value);
-          phoneEl.value = normalized;
-          showError(errPhone, isValidTwMobile(normalized) ? "" : "請輸入 09 開頭的 10 碼手機號碼");
-        });
-      }
-
-      if (idEl) {
-        idEl.addEventListener("input", () => {
-          const v = (idEl.value || "").trim();
-          showError(errId, v ? "" : "請輸入訂單編號");
-        });
-      }
-
-      function renderOrderResult(order){
-        if (!resultEl) return;
-        if (!order) { resultEl.innerHTML = ""; return; }
-
-        const items = Array.isArray(order.items) ? order.items : (Array.isArray(order.itemsJson) ? order.itemsJson : []);
-        const statusText = order.statusText || order.status || "未完成 / 新訂單";
-        const createdAt = order.createdAt || "";
-        const customer = order.customer || {};
-        const total = (typeof order.totalAmount === "number") ? order.totalAmount : null;
-
-        const itemsHtml = (Array.isArray(order.items) ? order.items : [])
-          .map(it => {
-            const name = it.name || "";
-            const spec = it.specLabel ? `（${it.specLabel}）` : "";
-            const qty = it.qty || 0;
-            return `<li>${name}${spec} × ${qty}</li>`;
-          }).join("");
-
-        resultEl.innerHTML = `
-          <div style="margin-top:12px;padding:12px 14px;border-radius:14px;background:#fffdf5;border:1px dashed #f0d9a4;color:#4f3b2a;">
-            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-              <div><strong>訂單編號：</strong>${order.id || ""}</div>
-              <div><strong>狀態：</strong>${statusText}</div>
-            </div>
-            ${createdAt ? `<div style="margin-top:6px;font-size:13px;color:#9a7641;">建立時間：${createdAt}</div>` : ""}
-            <div style="margin-top:8px;font-size:13px;">
-              <div><strong>收件人：</strong>${customer.name || "-"}</div>
-              <div><strong>配送：</strong>${customer.ship || "-"}</div>
-              <div><strong>地址 / 門市：</strong>${customer.address || "-"}</div>
-            </div>
-            ${itemsHtml ? `<div style="margin-top:10px;"><strong>商品：</strong><ul style="padding-left:18px;margin-top:6px;">${itemsHtml}</ul></div>` : ""}
-            ${total !== null ? `<div style="margin-top:10px;"><strong>總金額：</strong>NT$ ${total}</div>` : ""}
-          </div>
-        `;
-      }
-
-      if (!form) return;
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const phone = normalizeTwMobile(phoneEl?.value || "");
-        const orderId = (idEl?.value || "").trim();
-
-        if (!isValidTwMobile(phone)) {
-          showError(errPhone, "請輸入 09 開頭的 10 碼手機號碼");
-          return;
-        } else showError(errPhone, "");
-
-        if (!orderId) {
-          showError(errId, "請輸入訂單編號");
-          return;
-        } else showError(errId, "");
-
-        if (resultEl) resultEl.innerHTML = "查詢中…";
-
-        try {
-          const data = await apiGet(`/api/orders/query?phone=${encodeURIComponent(phone)}&id=${encodeURIComponent(orderId)}`);
-          const order = data?.order || data?.data || data;
-          renderOrderResult(order);
-        } catch (err) {
-          console.error("Order query error", err);
-          if (resultEl) {
-            resultEl.innerHTML = `
-              <div style="margin-top:12px;padding:12px 14px;border-radius:14px;background:#fff0f0;border:1px solid #f3b2b2;color:#8b2b2b;">
-                查詢失敗：${(err && err.message) ? err.message : "請稍後再試"}
-              </div>
-            `;
-          }
-        }
-      });
-    })();
-
-
-/* =========================================================
-      J) Hero 產品圖輪播
-    ========================================================= */
-    let heroSlideIndex = 0;
-    let heroSlideTimer = null;
-
-    function pickHeroProducts(list){
-      const arr = Array.isArray(list) ? list.slice() : [];
-      const preferred = arr.filter(p => {
-        const t = String(p.tag || "");
-        return t.includes("主打") || t.includes("熱賣") || t.includes("新品");
-      });
-      return (preferred.length ? preferred : arr).slice(0, 6);
-    }
-
-    function buildHeroSlides(){
-      const slidesEl = document.getElementById("heroBannerSlides");
-      const dotsEl = document.getElementById("heroBannerDots");
-      if (!slidesEl || !dotsEl) return;
-
-      slidesEl.innerHTML = "";
-      dotsEl.innerHTML = "";
-
-      const picked = pickHeroProducts(products);
-
-      if (!picked.length) {
-        slidesEl.innerHTML = `
-          <div class="hero-banner-slide active">
-            <div class="hero-banner-top">
-              <div>
-                <div class="hero-banner-tag">主打商品</div>
-                <div class="hero-banner-title">目前尚未載入商品</div>
-                <div class="hero-banner-sub">請確認後端 /api/products 是否正常回傳。</div>
-              </div>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      picked.forEach((p, idx) => {
-        const specs = p.specs || [];
-        const firstSpec = specs[0];
-
-        const imgRaw =
-          p.imageUrl ||
-          (firstSpec && firstSpec.mainImg) ||
-          (firstSpec && firstSpec.thumbs && firstSpec.thumbs[0]) ||
-          "";
-
-        const title = p.name || "商品";
-        const sub = p.subtitle || p.shortDesc || "點擊查看商品詳情";
-        const tag = p.tag || "主打商品";
-
-        const slide = document.createElement("div");
-        slide.className = "hero-banner-slide" + (idx === 0 ? " active" : "");
-        slide.innerHTML = `
-          <div class="hero-banner-top">
-            <div>
-              <div class="hero-banner-tag">${tag}</div>
-              <div class="hero-banner-title">${title}</div>
-              <div class="hero-banner-sub">${sub}</div>
-            </div>
-          </div>
-
-          <div class="hero-banner-media" role="button" aria-label="開啟商品詳情">
-            ${imgRaw ? `<img src="${resolveImgUrl(imgRaw)}" alt="${title}">` : ""}
-          </div>
-
-          <div class="hero-banner-cta">
-            <button type="button" class="cta-primary">查看商品</button>
-            <button type="button" class="cta-secondary">加入購物車</button>
-          </div>
-        `;
-
-        const media = slide.querySelector(".hero-banner-media");
-        const ctaView = slide.querySelector(".cta-primary");
-        if (media) media.addEventListener("click", () => openProduct(p.id));
-        if (ctaView) ctaView.addEventListener("click", () => openProduct(p.id));
-
-        const ctaAdd = slide.querySelector(".cta-secondary");
-        if (ctaAdd) {
-          ctaAdd.addEventListener("click", () => {
-            const specKey = (p.specs && p.specs[0] && p.specs[0].key) ? p.specs[0].key : "";
-            addToCart(p.id, specKey, 1);
-            scrollToSection("cart");
-          });
-        }
-
-        slidesEl.appendChild(slide);
-
-        const dot = document.createElement("button");
-        dot.type = "button";
-        dot.className = "hero-dot" + (idx === 0 ? " active" : "");
-        dot.setAttribute("aria-label", `第 ${idx + 1} 張 Banner`);
-        dot.addEventListener("click", () => {
-          showHeroSlide(idx);
-          restartHeroTimer();
-        });
-        dotsEl.appendChild(dot);
-      });
-    }
-
-    function showHeroSlide(i){
-      const slides = document.querySelectorAll("#heroBannerSlides .hero-banner-slide");
-      const dots = document.querySelectorAll("#heroBannerDots .hero-dot");
-      if (!slides.length || !dots.length) return;
-
-      const total = slides.length;
-      heroSlideIndex = (i + total) % total;
-
-      slides.forEach((s, idx) => s.classList.toggle("active", idx === heroSlideIndex));
-      dots.forEach((d, idx) => d.classList.toggle("active", idx === heroSlideIndex));
-    }
-
-    function nextHeroSlide(){ showHeroSlide(heroSlideIndex + 1); }
-
-    function restartHeroTimer(){
-      if (heroSlideTimer) clearInterval(heroSlideTimer);
-      heroSlideTimer = setInterval(nextHeroSlide, 6000);
-    }
-
-    function initHeroBanner(){
-      buildHeroSlides();
-      showHeroSlide(0);
-      restartHeroTimer();
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-          if (heroSlideTimer) clearInterval(heroSlideTimer);
-        } else {
-          restartHeroTimer();
-        }
-      });
-    }
-
-    /* =========================================================
-      Lightbox
-    ========================================================= */
-    const lb = document.getElementById("imgLightbox");
-    const lbImg = document.getElementById("lbImg");
-    const lbClose = document.getElementById("lbClose");
-    const lbPrev = document.getElementById("lbPrev");
-    const lbNext = document.getElementById("lbNext");
-    const lbStage = document.getElementById("lbStage");
-
-    let lbList = [];
-    let lbIndex = 0;
-
-    function openLightbox(list, startIndex = 0){
-      lbList = Array.isArray(list) ? list.filter(Boolean) : [];
-      lbIndex = Math.max(0, Math.min(startIndex, lbList.length - 1));
-      if (!lbList.length) return;
-
-      lbImg.src = resolveImgUrl(lbList[lbIndex]);
-      lb.classList.add("open");
-      lb.setAttribute("aria-hidden", "false");
-      document.body.style.overflow = "hidden";
-    }
-
-    function closeLightbox(){
-      lb.classList.remove("open");
-      lb.setAttribute("aria-hidden", "true");
-      document.body.style.overflow = "";
-      lbImg.src = "";
-    }
-
-    function lightboxGo(delta){
-      if (!lbList.length) return;
-      lbIndex = (lbIndex + delta + lbList.length) % lbList.length;
-      lbImg.src = resolveImgUrl(lbList[lbIndex]);
-    }
-
-    lbClose.addEventListener("click", closeLightbox);
-    lb.addEventListener("click", (e) => { if (e.target === lb) closeLightbox(); });
-    lbPrev.addEventListener("click", (e) => { e.stopPropagation(); lightboxGo(-1); });
-    lbNext.addEventListener("click", (e) => { e.stopPropagation(); lightboxGo(1); });
-
-    document.addEventListener("keydown", (e) => {
-      if (!lb.classList.contains("open")) return;
-      if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowLeft") lightboxGo(-1);
-      if (e.key === "ArrowRight") lightboxGo(1);
-    });
-
-    let touchStartX = 0;
-    lbStage.addEventListener("touchstart", (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
-    lbStage.addEventListener("touchend", (e) => {
-      const endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : touchStartX;
-      const dx = endX - touchStartX;
-      if (Math.abs(dx) > 40) dx > 0 ? lightboxGo(-1) : lightboxGo(1);
-    }, { passive: true });
-
-    if (detailMainImg) {
-      detailMainImg.style.cursor = "zoom-in";
-      detailMainImg.addEventListener("click", () => {
-        const p = products.find(x => x.id === currentDetailProductId);
-        if (!p) return;
-
-        const spec = (p.specs || []).find(s => s.key === currentDetailSpecKey) || (p.specs || [])[0];
-        const thumbs = (spec && spec.thumbs && spec.thumbs.length) ? spec.thumbs : [];
-
-        const currentSrcRaw = (spec && spec.mainImg) ? spec.mainImg : (p.imageUrl || "");
-        const list = thumbs.length ? thumbs : [currentSrcRaw];
-
-        const currentResolved = resolveImgUrl(currentSrcRaw);
-        let start = 0;
-        for (let i = 0; i < list.length; i++){
-          if (resolveImgUrl(list[i]) === currentResolved) { start = i; break; }
-        }
-        openLightbox(list, start);
-      });
-    }
-
-    lbStage.addEventListener("wheel", (e) => {
-      if (!lb.classList.contains("open")) return;
-      e.preventDefault();
-      if (e.deltaY > 0) lightboxGo(1);
-      else lightboxGo(-1);
-    }, { passive: false });
-
-    /* =========================================================
-      K) 初始化
-    ========================================================= */
-    async function initPage() {
-      updateCartBtnText();
-      await loadProducts();
-
-      currentCategory = "all";
-      currentKeyword = "";
-
-      renderProductGrid();
-      renderCart();
-      updateCartSummary();
-
-      const checkoutShipEl = document.getElementById("checkoutShip");
-      if (checkoutShipEl) checkoutShipEl.addEventListener("change", () => updateCartSummary());
-
-      initHeroBanner();
-    }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initPage);
-    } else {
-      initPage();
-    }
-  </script>
-<script>
-/* fix: prevent search focus scroll jump on mobile (iOS keyboard) */
-(function () {
-  const input = document.getElementById('heroSearchInput');
-  if (!input) return;
-
-  let lastY = 0;
-
-  input.addEventListener('focus', () => {
-    lastY = window.scrollY || 0;
-    setTimeout(() => window.scrollTo(0, lastY), 50);
-    setTimeout(() => window.scrollTo(0, lastY), 250);
-    setTimeout(() => window.scrollTo(0, lastY), 600);
-  });
-
-  input.addEventListener('touchstart', () => {
-    try { input.focus({ preventScroll: true }); } catch (e) {}
-  }, { passive: true });
-})();
-</script>
+  <!-- ✅ Frontend JS（固定讀取 public/app.js） -->
+  <script src="/app.js?v=20251216-1"></script>
+  
 </body>
 </html>
