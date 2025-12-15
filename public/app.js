@@ -2,6 +2,8 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   alert("我真的有讀到 app.js");
 }
 
+let __allThumbsBuiltForProductId = null;
+
 /* =========================================================
  * Shipping / Free shipping rule (單一來源設定)
  * ========================================================= */
@@ -168,6 +170,60 @@ function openProduct(productId) {
   detailPrice.textContent = product.price;
   detailDesc.innerHTML = product.detailHtml || "";
 
+  // ============================
+  // ✅ 建立「整個商品」的全圖庫 + 全縮圖列（只做一次）
+  // ============================
+  if (__allThumbsBuiltForProductId !== productId) {
+    __allThumbsBuiltForProductId = productId;
+
+    const allRaw = [];
+
+    // 收集：每個款式的 mainImg + thumbs
+    (product.specs || []).forEach((s) => {
+      if (s?.mainImg) allRaw.push(s.mainImg);
+      (s?.thumbs || []).forEach((x) => allRaw.push(x));
+    });
+
+    // 如果都沒圖，退回商品主圖
+    if (!allRaw.length && product.imageUrl) allRaw.push(product.imageUrl);
+
+    // ✅ 去重（用最終 URL 去重）
+    const seen = new Set();
+    const allUrls = [];
+    for (const raw of allRaw) {
+      const u = resolveImgUrl(raw);
+      if (!u) continue;
+      if (seen.has(u)) continue;
+      seen.add(u);
+      allUrls.push(raw); // 這裡保留 raw，後面 setMainImageByIndex 會 resolve
+    }
+
+    detailGallery.images = allUrls;
+    detailGallery.index = 0;
+
+    // ✅ 建立縮圖列（永遠顯示全圖）
+detailThumbs.innerHTML = "";
+detailGallery.images.forEach((raw, i) => {
+  const t = document.createElement("img");
+  t.src = resolveImgUrl(raw);
+  t.dataset.raw = raw;
+  if (i === 0) t.classList.add("active");
+
+  t.onclick = () => {
+    setMainImageByIndex(i);
+    t.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
+
+  detailThumbs.appendChild(t);
+});
+
+    // ✅ 綁定「主圖滑動 + 點擊 Lightbox」（只綁一次）
+    ensureDetailGalleryBindings();
+  }
+
+  // ============================
+  // ✅ 款式按鈕（照舊）
+  // ============================
   detailSpecs.innerHTML = "";
   (product.specs || []).forEach((spec, i) => {
     const btn = document.createElement("button");
@@ -177,17 +233,22 @@ function openProduct(productId) {
     detailSpecs.appendChild(btn);
   });
 
+  // ✅ 預設選第一個款式：只切圖，不重建縮圖列
   if (product.specs && product.specs[0]) {
     setDetailSpec(productId, product.specs[0].key);
+  } else {
+    // 沒款式就顯示全圖庫第一張
+    setMainImageByIndex(0);
   }
 
   detailQtyInput.value = 1;
   productDetailSection.style.display = "block";
-  setTimeout(() => {
-  productDetailSection.scrollIntoView({ behavior: "smooth", block: "start" });
-}, 50);
 
+  setTimeout(() => {
+    productDetailSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 50);
 }
+
 
 function setDetailSpec(productId, specKey) {
   const product = products.find((p) => p.id === productId);
@@ -198,44 +259,30 @@ function setDetailSpec(productId, specKey) {
 
   currentDetailSpecKey = spec.key;
 
-  const mainImgRaw =
-    spec.mainImg ||
-    product.imageUrl ||
-    (spec.thumbs && spec.thumbs[0]) ||
-    "";
-
-  const thumbs = spec.thumbs || [];
-
-  // ✅ 建立 Gallery state（給主圖 / 滑動 / Lightbox 共用）
-  buildDetailGallery(mainImgRaw, thumbs);
-
-  // ✅ 顯示第一張
-  setMainImageByIndex(0);
-
   // 主圖尺寸（避免遮擋）
   detailMainImg.style.maxHeight = "40vh";
   detailMainImg.style.objectFit = "contain";
 
-  // ✅ 建立縮圖
-  detailThumbs.innerHTML = "";
-  detailGallery.images.forEach((raw, i) => {
-    const t = document.createElement("img");
-    t.src = resolveImgUrl(raw);
-    t.dataset.raw = raw;
-    if (i === 0) t.classList.add("active");
+  // ✅ 切到「該款式」的第一張（在全縮圖列中找得到就跳過去）
+  const wantRaw = spec.mainImg || spec.thumbs?.[0] || product.imageUrl || "";
+  const wantUrl = resolveImgUrl(wantRaw);
 
-    t.onclick = () => setMainImageByIndex(i);
-    detailThumbs.appendChild(t);
+  let hitIndex = -1;
+  for (let i = 0; i < (detailGallery.images || []).length; i++) {
+    if (resolveImgUrl(detailGallery.images[i]) === wantUrl) {
+      hitIndex = i;
+      break;
+    }
+  }
+
+  setMainImageByIndex(hitIndex >= 0 ? hitIndex : 0);
+
+  // ✅ 規格按鈕 active
+  [...detailSpecs.children].forEach((b) => {
+    b.classList.toggle("active", b.textContent === spec.label);
   });
-
-  // ✅ 綁定「主圖滑動 + 點擊 Lightbox」（只綁一次）
-  ensureDetailGalleryBindings();
-
-  // 規格按鈕 active
-  [...detailSpecs.children].forEach((b) =>
-    b.classList.toggle("active", b.textContent === spec.label)
-  );
 }
+
 
 
 
@@ -643,27 +690,10 @@ let detailGallery = {
   index: 0,       // 目前顯示第幾張
 };
 
-function uniqImages(arr) {
-  const set = new Set();
-  return arr.filter((x) => {
-    const raw = String(x || "").trim();
-    if (!raw) return false;
-
-    // ✅ 用「最終 URL」當 key，避免 /a.jpg vs a.jpg vs https://.../a.jpg 被當成不同
-    const key = resolveImgUrl(raw);
-
-    if (set.has(key)) return false;
-    set.add(key);
-    return true;
-  });
-}
 
 
-function buildDetailGallery(mainImgRaw, thumbsArr) {
-  const list = uniqImages([mainImgRaw, ...(thumbsArr || [])]);
-  detailGallery.images = list;
-  detailGallery.index = 0;
-}
+
+
 
 function setMainImageByIndex(nextIdx, { syncThumb = true } = {}) {
   const imgs = detailGallery.images || [];
@@ -675,15 +705,17 @@ function setMainImageByIndex(nextIdx, { syncThumb = true } = {}) {
   const url = resolveImgUrl(imgs[idx]);
   if (detailMainImg) detailMainImg.src = url;
 
-  // 同步縮圖 active（找得到就亮）
-  if (syncThumb) {
-    const thumbs = Array.from(detailThumbs?.querySelectorAll("img") || []);
+  if (syncThumb && detailThumbs) {
+    const thumbs = Array.from(detailThumbs.querySelectorAll("img"));
     thumbs.forEach((t) => t.classList.remove("active"));
+
     const hit = thumbs.find((t) => t.dataset.raw === imgs[idx]);
-    if (hit) hit.classList.add("active");
+    if (hit) {
+      hit.classList.add("active");
+      hit.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
   }
 
-  // ④ 自動判斷直/橫圖比例（加 class 給 CSS 用）
   if (detailMainImg) {
     detailMainImg.onload = () => {
       const w = detailMainImg.naturalWidth || 0;
@@ -694,6 +726,7 @@ function setMainImageByIndex(nextIdx, { syncThumb = true } = {}) {
   }
 }
 
+
 /* -------------------------
    ① Lightbox（像蝦皮）
 ------------------------- */
@@ -702,7 +735,7 @@ function ensureLightbox() {
 
   const lb = document.createElement("div");
   lb.id = "sxzLightbox";
-  lb.querySelector(".lb-img").addEventListener("click", () => closeLightbox());
+  
   lb.innerHTML = `
     <div class="lb-backdrop"></div>
     <div class="lb-panel" role="dialog" aria-modal="true">
@@ -714,7 +747,7 @@ function ensureLightbox() {
     </div>
   `;
   document.body.appendChild(lb);
-
+  lb.querySelector(".lb-img").addEventListener("click", () => closeLightbox());
   const close = () => closeLightbox();
   lb.querySelector(".lb-backdrop").addEventListener("click", close);
   lb.querySelector(".lb-close").addEventListener("click", close);

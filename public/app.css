@@ -1,42 +1,48 @@
-/* ===== SANXIAOZI: Product grid safe layout (enhanced) ===== */
+/* =========================================================
+   ✅ SANXIAOZI: Product grid safe layout (final clean)
+========================================================= */
 
 /* Grid */
-.product-grid {
+.product-grid{
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
 }
 
 /* Tablet */
-@media (max-width: 900px) {
-  .product-grid {
+@media (max-width: 900px){
+  .product-grid{
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
   }
 }
 
 /* Mobile: always 2 columns */
-@media (max-width: 768px) {
-  .product-grid {
+@media (max-width: 768px){
+  .product-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 }
-@media (max-width: 480px) {
-  .product-grid { gap: 10px; }
+@media (max-width: 480px){
+  .product-grid{ gap: 10px; }
 }
 
-/* Prevent overflow (card + children) */
-.product-card {
+/* Optional: ultra small screens fallback */
+@media (max-width: 360px){
+  .product-grid{ grid-template-columns: 1fr; }
+}
+
+/* Prevent overflow (card) */
+.product-card{
   min-width: 0;
   max-width: 100%;
-}
-.product-card * {
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Images never overflow */
-.product-img img {
+.product-img img{
   display: block;
   width: 100%;
   height: auto;
@@ -44,72 +50,72 @@
 }
 
 /* Title wrapping: avoid pushing layout */
-.product-name {
+.product-name{
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
 /* List hint under price */
-.card-hint {
+.card-hint{
   margin-top: 8px;
   font-size: 12px;
   color: #9a7641;
   line-height: 1.2;
 }
 
-/* Optional: make cards visually aligned (nice grid) */
-.product-card {
-  display: flex;
-  flex-direction: column;
+/* Bottom area stays aligned (nice grid) */
+.product-bottom{
+  margin-top: auto;
 }
-.product-bottom {
-  margin-top: auto; /* bottom area stays aligned */
-}
+
 
 /* =========================================================
-   ✅ 商品詳情主圖：縮小至少一半 + sticky
+   ✅ 商品詳情主圖：縮小至少一半 + sticky（final clean）
 ========================================================= */
 
-/* ③ sticky：主圖在捲動時仍可看到（桌機/手機都可） */
 #detailMainImg{
   width: 100%;
   height: auto;
-  max-height: 42vh;      /* ⭐ 直接縮小（至少小一半） */
-  object-fit: contain;   /* 不裁切 */
+  max-height: 42vh;     /* 桌機：縮小（至少小一半） */
+  object-fit: contain;  /* 不裁切 */
   border-radius: 16px;
 }
 
-/* 如果你的詳情區有左右欄容器，這段會更穩（沒有也沒關係） */
-#productDetail .pd-media,
-#productDetail .pd-left,
-#productDetail .product-media{
-  position: sticky;
-  top: 88px; /* 依你 header 高度可調 */
-  align-self: start;
+/* 手機再更小一點，避免遮擋「購物 / 商品介紹」 */
+@media (max-width: 768px){
+  #detailMainImg{ max-height: 34vh; }
 }
 
-/* ④ 直/橫圖比例微調（JS 會自動加 class） */
-#detailMainImg.is-portrait{
-  max-height: 48vh;
-}
-#detailMainImg.is-landscape{
-  max-height: 38vh;
+/* 直/橫圖比例微調（JS 會自動加 class） */
+#detailMainImg.is-portrait{ max-height: 48vh; }
+#detailMainImg.is-landscape{ max-height: 38vh; }
+
+/* Sticky：只黏左欄（避免選到太廣黏錯元素）
+   如果你實際左欄 class 不是 pd-left，改成你那個即可 */
+#productDetail .pd-left{
+  position: sticky;
+  top: 88px;            /* 依 header 高度可調 */
+  align-self: start;
 }
 
 /* 縮圖 active */
 #detailThumbs img.active{
-  outline: 3px solid rgba(120, 170, 255, .9);
+  opacity: 1;
+  outline: 3px solid rgba(120,170,255,.9);
   border-radius: 12px;
 }
 
+
 /* =========================================================
-   ✅ Lightbox（像蝦皮）
+   ✅ Lightbox（像蝦皮） final clean
 ========================================================= */
+
 #sxzLightbox{
   position: fixed;
   inset: 0;
   z-index: 99999;
   display: none;
+  touch-action: pan-y;
 }
 #sxzLightbox.open{ display: block; }
 
@@ -134,6 +140,8 @@
   background: rgba(255,255,255,.08);
   object-fit: contain;
   box-shadow: 0 16px 60px rgba(0,0,0,.35);
+  transition: opacity .15s ease;
+  touch-action: pan-y;
 }
 
 #sxzLightbox .lb-close{
@@ -182,16 +190,61 @@
 /* 開 Lightbox 時禁止背景捲動 */
 body.no-scroll{
   overflow: hidden;
-}
-
-
-body.no-scroll{
-  overflow: hidden;
   touch-action: none;
 }
-#sxzLightbox{
-  touch-action: pan-y;
+
+
+/* =========================================================
+   📱 商品詳情：縮圖列（手機橫向滑動，像蝦皮） final clean
+========================================================= */
+
+#detailThumbs{
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
 }
-#sxzLightbox .lb-img{
-  touch-action: pan-y;
+
+/* 單張縮圖 */
+#detailThumbs img{
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 12px;
+  cursor: pointer;
+  opacity: .65;
+  transition: opacity .2s, outline .2s;
+  flex: 0 0 auto;
 }
+
+/* 手機 → 橫向滑動 */
+@media (max-width: 768px){
+  #detailThumbs{
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+  }
+  #detailThumbs::-webkit-scrollbar{ display: none; }
+
+  /* 手機縮圖稍微放大 */
+  #detailThumbs img{
+    width: 72px;
+    height: 72px;
+    scroll-snap-align: start;
+  }
+}
+
+
+.hero-banner-slide img{
+  width:100%;
+  height:100%;
+  max-height:320px;   /* 你要多高就調 */
+  object-fit:cover;
+  display:block;
+  border-radius:18px;
+}
+
+.hero-content h2{ font-size:16px; font-weight:900; margin-top:10px; }
+.hero-content p{ font-size:13px; color:#6c6480; margin-top:6px; line-height:1.7; }
+.hero-content{ display:flex; flex-direction:column; gap:8px; }
