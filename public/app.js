@@ -363,19 +363,7 @@ function showOrderSuccessNotice({ orderId, createdAt, status, total, email }) {
               <button type="button" class="product-like-btn">♡</button>
             </div>
 
-            <div class="card-spec-row">
-              ${(specs || [])
-                .map(
-                  (spec, idx) => `
-                    <button type="button"
-                      class="card-spec-btn ${idx === 0 ? "active" : ""}"
-                      data-spec-key="${spec.key}">
-                      ${spec.label}
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
+            <div class="card-hint" data-click="open-detail">[點圖進入選款]</div>
 
             <div class="card-action-row">
               <div class="qty-control">
@@ -399,16 +387,6 @@ function showOrderSuccessNotice({ orderId, createdAt, status, total, email }) {
           likeBtn.textContent = likeBtn.classList.contains("active") ? "❤" : "♡";
         });
 
-        const specBtns = article.querySelectorAll(".card-spec-btn");
-        specBtns.forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            specBtns.forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
-            article.dataset.selectedSpec = btn.dataset.specKey || "";
-          });
-        });
-
         const qtyInput = article.querySelector(".qty-input");
         const qtyBtns = article.querySelectorAll(".qty-btn");
 
@@ -429,8 +407,16 @@ function showOrderSuccessNotice({ orderId, createdAt, status, total, email }) {
         const addBtn = article.querySelector(".btn-cart");
         addBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const specKey = article.dataset.selectedSpec || "";
           const qty = parseInt(qtyInput.value || "1", 10) || 1;
+
+          const specList = product.specs || [];
+          // 多款式：先進入詳情頁選款（列表不直接選）
+          if (specList.length > 1) {
+            openProduct(product.id);
+            return;
+          }
+
+          const specKey = article.dataset.selectedSpec || "";
           addToCart(product.id, specKey, qty);
         });
 
