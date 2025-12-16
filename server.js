@@ -1306,6 +1306,21 @@ app.get('/pay/ecpay/result', async (req, res) => {
   }
 });
 
+// 3-POST) 綠界有時會用 POST 打回 OrderResultURL（瀏覽器端）
+// 一定要接住 POST，不然會出現 Cannot POST /pay/ecpay/result
+app.post('/pay/ecpay/result', (req, res) => {
+  const ref =
+    String(req.query.ref || '').trim() ||
+    String(req.body?.MerchantTradeNo || req.body?.merchantTradeNo || '').trim();
+
+  // ⚠️ 沒 ref 也不要丟錯給客人，直接回首頁
+  if (!ref) return res.redirect(302, '/');
+
+  // 導回 GET 版本顯示結果
+  return res.redirect(302, `/pay/ecpay/result?ref=${encodeURIComponent(ref)}`);
+});
+
+
 
 
 
