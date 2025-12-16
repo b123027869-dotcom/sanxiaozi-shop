@@ -756,9 +756,10 @@ footer{
           <div class="pd-info-title" id="detailName"></div>
           <div class="pd-info-sub" id="detailSub"></div>
 
-          <div class="pd-price">
-            NT$ <span id="detailPrice">0</span>
-          </div>
+<div class="pd-price">
+  NT$ <span id="detailPrice">0</span>
+  <div id="detailPriceNote" style="margin-top:6px;font-size:13px;color:#9a7641;font-weight:800;"></div>
+</div>
 
           <div>
             <div class="pd-spec-title">選擇款式</div>
@@ -877,14 +878,15 @@ footer{
                 style="flex:1;"
               />
 
-              <select id="checkoutEmailDomain" aria-label="選擇常用信箱尾碼" style="width:190px;">
-                <option value="gmail.com">gmail.com</option>
-                <option value="yahoo.com">yahoo.com</option>
-                <option value="hotmail.com">hotmail.com</option>
-                <option value="outlook.com">outlook.com</option>
-                <option value="icloud.com">icloud.com</option>
-                <option value="custom">其他…</option>
-              </select>
+<select id="checkoutEmailDomain" aria-label="選擇常用信箱尾碼" style="width:190px;">
+  <option value="gmail.com">@gmail.com</option>
+  <option value="yahoo.com">@yahoo.com</option>
+  <option value="hotmail.com">@hotmail.com</option>
+  <option value="outlook.com">@outlook.com</option>
+  <option value="icloud.com">@icloud.com</option>
+  <option value="custom">其他…</option>
+</select>
+
             </div>
 
             <input
@@ -923,14 +925,14 @@ footer{
             </select>
           </div>
           <div>
-            <label for="checkoutPay">付款方式</label>
-            <select id="checkoutPay">
-              <option value="card">信用卡（線上付款）</option>
-              <option value="linepay">LINE Pay（線上付款）</option>
-              <option value="cod">貨到付款（改走蝦皮下單）</option>
-              <option value="transfer" disabled>銀行轉帳（暫不開放）</option>
-            </select>
-            <div class="form-hint">貨到付款會引導你到蝦皮下單；銀行轉帳暫不開放（之後改虛擬帳戶）。</div>
+<label for="checkoutPay">付款方式</label>
+<select id="checkoutPay">
+  <option value="card">信用卡（線上付款）</option>
+  <option value="atm">ATM 虛擬帳戶（轉帳付款）</option>
+  <option value="cod">貨到付款（改走蝦皮下單）</option>
+  <option value="transfer" disabled>銀行轉帳（暫不開放）</option>
+</select>
+<div class="form-hint">貨到付款會引導你到蝦皮下單）。</div>
           </div>
         </div>
 

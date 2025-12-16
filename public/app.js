@@ -783,8 +783,10 @@ function updateCartButtonCount() {
     updateCartButtonCount();
   }
 
+let __addToCartBound = false;
 function bindAddToCart() {
-  if (!detailAddBtn) return;
+  if (!detailAddBtn || __addToCartBound) return;
+  __addToCartBound = true;
 
   detailAddBtn.addEventListener("click", () => {
     if (!currentDetailProductId) return;
@@ -795,29 +797,9 @@ function bindAddToCart() {
     const qty = Math.max(1, parseInt(detailQtyInput?.value, 10) || 1);
     const specKey = currentDetailSpecKey || "__default__";
 
-    /* =========================
-       ✅ 1️⃣ 計算庫存
-       規則：有款式 stock 用款式，沒有就用商品 stock
-    ========================= */
-    let availableStock = Infinity;
+const availableStock = getAvailableStock(product, specKey);
+const inCartQty = getCartQty(currentDetailProductId, specKey);
 
-    if (Array.isArray(product.specs)) {
-      const spec = product.specs.find(s => s.key === specKey);
-      if (spec && Number.isFinite(Number(spec.stock))) {
-        availableStock = Number(spec.stock);
-      }
-    }
-
-    if (availableStock === Infinity && Number.isFinite(Number(product.stock))) {
-      availableStock = Number(product.stock);
-    }
-
-    /* =========================
-       ✅ 2️⃣ 計算購物車內已有數量
-    ========================= */
-    const inCartQty = cartItems
-      .filter(x => x.productId === currentDetailProductId && x.specKey === specKey)
-      .reduce((sum, x) => sum + x.qty, 0);
 
     /* =========================
        ✅ 3️⃣ 庫存不足 → 溫柔提示（不顯示錯誤碼）
@@ -1221,14 +1203,39 @@ function bindAddToCart() {
     return "https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263";
   }
 
-  function buildCheckoutEmail() {
-    const local = $("checkoutEmailLocal")?.value?.trim() || "";
-    const domainSel = $("checkoutEmailDomain")?.value || "gmail.com";
-    const custom = $("checkoutEmailCustom")?.value?.trim() || "";
-    const domain = domainSel === "custom" ? custom : domainSel;
-    if (!local || !domain) return "";
-    return `${local}@${domain}`;
+function normalizeEmailInput(s) {
+  // 去空白、全形＠轉半形、順便把左右空白去掉
+  return String(s || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/＠/g, "@");
+}
+
+// ✅ 防呆 Email：避免 @@、避免 you@gmail.com@yahoo.com、也允許客戶直接貼完整 email
+function buildCheckoutEmail() {
+  const localRaw = normalizeEmailInput($("checkoutEmailLocal")?.value);
+  const domainSel = $("checkoutEmailDomain")?.value || "gmail.com";
+  const customRaw = normalizeEmailInput($("checkoutEmailCustom")?.value);
+
+  // 1) 客戶如果「直接輸入完整 email」(含@) → 直接用，不要再拼尾碼
+  if (localRaw.includes("@")) {
+    // 若他打了多個@，只用第一個切開組回來（避免 @@）
+    const at = localRaw.indexOf("@");
+    const left = localRaw.slice(0, at);
+    const right = localRaw.slice(at + 1);
+
+    const full = `${left}@${right}`.replace(/^@+/, "");
+    return full;
   }
+
+  // 2) 否則用下拉/自訂網域來拼
+  let domain = domainSel === "custom" ? customRaw : String(domainSel || "");
+  domain = normalizeEmailInput(domain).replace(/^@+/, ""); // 網域不要帶@
+
+  if (!localRaw || !domain) return "";
+  return `${localRaw}@${domain}`;
+}
+
 
   // ✅ Checkout 格式防呆（前台檢查）
   function normalizeDigits(s) {
@@ -1266,6 +1273,22 @@ function bindAddToCart() {
       };
       domainSel.addEventListener("change", sync);
       sync();
+	  const emailHint = $("emailHint");
+const emailLocal = $("checkoutEmailLocal");
+
+const refreshEmailHint = () => {
+  const emailNow = buildCheckoutEmail();
+  if (emailHint) {
+    emailHint.textContent = emailNow
+      ? `✅ 將寄送訂單明細到：${emailNow}`
+      : "⌜ @ ⌟不需要另外加（右邊已經有），將寄送訂單明細";
+  }
+};
+
+emailLocal && emailLocal.addEventListener("input", refreshEmailHint);
+domainSel && domainSel.addEventListener("change", refreshEmailHint);
+custom && custom.addEventListener("input", refreshEmailHint);
+refreshEmailHint();
     }
 
     form.addEventListener("submit", async (e) => {
@@ -1309,10 +1332,11 @@ if (!/^09\d{8}$/.test(phone)) {
   return;
 }
 
-if (!email.includes("@") || email.length < 6) {
-  alert("請填寫正確的 Email ✉️");
+if (!isValidEmail(email)) {
+  alert("請填寫正確的 Email ✉️\n小提醒：右邊已經有 @gmail.com，不需要再自己打 @ 喔 🤍");
   return;
 }
+
 
 if (address.length < 4) {
   alert("請填寫完整的收件地址或門市資訊 🏠");
@@ -1372,11 +1396,7 @@ if (resp?.payment?.redirectUrl) {
 }
 
 		
-		/* ✅【貼這裡】有綠界付款就直接跳轉 */
-if (resp?.payment?.redirectUrl) {
-  location.href = resp.payment.redirectUrl;
-  return;
-}
+
 
         const ids = Array.isArray(resp.splitIds)
           ? resp.splitIds
@@ -1461,12 +1481,15 @@ if (resp?.payment?.redirectUrl) {
   /* =========================================================
    * LINE button in detail
    * ========================================================= */
-  function bindDetailLineBtn() {
-    if (!detailLineBtn) return;
-    detailLineBtn.addEventListener("click", () => {
-      window.open("https://lin.ee/FDKoij6", "_blank", "noopener,noreferrer");
-    });
-  }
+let __detailLineBound = false;
+function bindDetailLineBtn() {
+  if (!detailLineBtn || __detailLineBound) return;
+  __detailLineBound = true;
+
+  detailLineBtn.addEventListener("click", () => {
+    window.open("https://lin.ee/FDKoij6", "_blank", "noopener,noreferrer");
+  });
+}
 
   /* =========================================================
    * Init

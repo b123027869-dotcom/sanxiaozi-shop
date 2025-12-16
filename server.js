@@ -239,6 +239,23 @@ function ecpayUrlEncode(str) {
     .replace(/%29/g, ')');
 }
 
+
+function normalizeEcpayBody(input) {
+  const out = {};
+  for (const [k, v] of Object.entries(input || {})) {
+    if (Array.isArray(v)) out[k] = String(v[0] ?? '');
+    else if (v && typeof v === 'object') out[k] = String(v.value ?? '');
+    else out[k] = String(v ?? '');
+  }
+  return out;
+}
+
+
+
+
+
+
+
 function genCheckMacValue(params) {
   const raw = { ...params };
   delete raw.CheckMacValue;
@@ -1212,6 +1229,8 @@ const choosePayment = (pm === 'atm') ? 'ATM' : (pm === 'card') ? 'Credit' : 'ALL
       ChoosePayment: choosePayment,               // 讓客人選信用卡/ATM
       EncryptType: 1,
 
+	  PaymentInfoURL: `${host}/api/ecpay/payment-info`, // ✅ ATM 虛擬帳號資料回傳
+	  ExpireDate: 3,                                   // ✅ 虛擬帳號有效天數（1~60）
       ReturnURL: `${host}/api/ecpay/return`,             // 綠界 server 回呼
 	  
       OrderResultURL: `${host}/pay/ecpay/result?ref=${encodeURIComponent(ref)}`,
@@ -1228,12 +1247,61 @@ const choosePayment = (pm === 'atm') ? 'ATM' : (pm === 'card') ? 'Credit' : 'ALL
     res.status(500).send('create ecpay form failed');
   }
 });
+// 2.5) 綠界 ATM 取得「虛擬帳號資訊」會 POST 到這裡（server-to-server）
+app.post('/api/ecpay/payment-info', async (req, res) => {
+  try {
+    const body = normalizeEcpayBody(req.body || {});
+
+    console.log("ECPAY PAYMENT-INFO BODY:", body);
+
+    // ✅ 驗證 CheckMacValue
+    const recv = String(body.CheckMacValue || '');
+    const calc = genCheckMacValue(body);
+
+    if (!recv || recv !== calc) {
+      console.error('❌ ECPay payment-info CheckMacValue mismatch');
+      return res.status(400).send('0|FAIL');
+    }
+
+    const ref = String(body.MerchantTradeNo || '').trim(); // 你的 paymentRef
+    if (!ref) return res.send('1|OK');
+
+    // ✅ 這三個欄位是 ATM 會給的（綠界欄位名稱常見如下）
+    const atmBankCode = String(body.BankCode || '').trim();
+    const atmVAccount = String(body.vAccount || body.Account || '').trim();
+    const atmExpireDate = String(body.ExpireDate || '').trim();
+
+    const patch = {
+      atmBankCode: atmBankCode || null,
+      atmVAccount: atmVAccount || null,
+      atmExpireDate: atmExpireDate || null,
+      merchantTradeNo: ref,
+      updatedAt: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('orders')
+      .update(patch)
+      .eq('paymentRef', ref);
+
+    if (error) throw error;
+
+    return res.send('1|OK');
+  } catch (e) {
+    console.error('❌ /api/ecpay/payment-info error', e);
+    return res.status(500).send('0|ERR');
+  }
+});
+
+
+
+
 
 // 2) 綠界付款完成會 POST 到這裡（server-to-server）
 app.post('/api/ecpay/return', async (req, res) => {
   try {
-    const body = req.body || {};
-	console.log("ECPAY RETURN BODY:", req.body);
+    const body = normalizeEcpayBody(req.body || {});
+console.log("ECPAY RETURN BODY:", body);
     const recv = String(body.CheckMacValue || '');
     const calc = genCheckMacValue(body);
 
@@ -1273,7 +1341,7 @@ if (rtnCode === '1' && ref) {
   }
 });
 
-// 3) 客人付款後回來看到的頁面（簡單顯示）
+// 3) 客人付款後回來看到的頁面（顯示 ATM 虛擬帳號 / 或付款結果）
 app.get('/pay/ecpay/result', async (req, res) => {
   try {
     const ref = String(req.query.ref || '').trim();
@@ -1281,23 +1349,54 @@ app.get('/pay/ecpay/result', async (req, res) => {
 
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('paymentStatus')
-      .eq('paymentRef', ref);
+      .select('id,paymentStatus,paymentMethod,atmBankCode,atmVAccount,atmExpireDate,totalAmount,createdAt')
+      .eq('paymentRef', ref)
+      .order('createdAt', { ascending: true });
 
     if (error) throw error;
 
     const paid = (orders || []).some(o => String(o.paymentStatus) === 'paid');
+    const isATM = (orders || []).some(o => String(o.paymentMethod || '') === 'atm');
+
+    // ATM 資訊（同一 paymentRef 拆單，抓第一筆有值的）
+    const atmInfo = (() => {
+      const hit = (orders || []).find(o => o.atmVAccount || o.atmBankCode || o.atmExpireDate) || {};
+      return {
+        bank: String(hit.atmBankCode || '').trim(),
+        acc: String(hit.atmVAccount || '').trim(),
+        exp: String(hit.atmExpireDate || '').trim()
+      };
+    })();
+
+    const total = (orders || []).reduce((s, o) => s + (Number(o.totalAmount || 0) || 0), 0);
+
+    // 畫面：已付款 -> 成功；未付款且 ATM -> 顯示帳號；其他 -> 處理中
+    const title = paid ? '✅ 付款成功' : (isATM ? '🏧 ATM 虛擬帳號已產生，請於期限內完成轉帳' : '⏳ 付款處理中 / 尚未完成');
+
+    const atmBlock = (!paid && isATM)
+      ? `
+        <div style="margin-top:12px;padding:12px 14px;border:1px dashed #f0d9a4;border-radius:12px;background:#fffdf5;">
+          <div style="font-weight:900;margin-bottom:6px;">ATM 轉帳資訊</div>
+          <div>銀行代碼：<strong>${escapeHtml(atmInfo.bank || '（等待綠界回傳中）')}</strong></div>
+          <div>虛擬帳號：<strong style="font-size:16px;">${escapeHtml(atmInfo.acc || '（等待綠界回傳中）')}</strong></div>
+          <div>繳費期限：<strong>${escapeHtml(atmInfo.exp || '（等待綠界回傳中）')}</strong></div>
+          <div style="margin-top:8px;color:#9a7641;font-size:13px;">
+            轉帳完成後，系統會自動更新為「已付款」，我們就會為你安排出貨 🤍
+          </div>
+        </div>
+      ` : '';
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(`<!doctype html><html><body style="font-family:system-ui;padding:16px;">
-      <h2>${paid ? '✅ 付款成功' : '⏳ 付款處理中 / 尚未完成'}</h2>
+    return res.send(`<!doctype html><html lang="zh-Hant"><body style="font-family:system-ui;padding:16px;">
+      <h2>${title}</h2>
       <p>付款編號：${escapeHtml(ref)}</p>
-      <p><a href="/">回首頁</a></p>
+      <p>合計金額：<strong>NT$ ${Number(total||0)||0}</strong></p>
+      ${atmBlock}
+      <p style="margin-top:14px;"><a href="/">回首頁</a></p>
     </body></html>`);
   } catch (e) {
     console.error('❌ /pay/ecpay/result error:', e);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    // 這裡不要再回 500，避免客人看到 Internal Server Error
     return res.status(200).send(`<!doctype html><html><body style="font-family:system-ui;padding:16px;">
       <h2>✅ 已收到付款結果</h2>
       <p>系統正在同步訂單狀態，請回到商店查看。</p>
@@ -1305,6 +1404,7 @@ app.get('/pay/ecpay/result', async (req, res) => {
     </body></html>`);
   }
 });
+
 
 // 3-POST) 綠界有時會用 POST 打回 OrderResultURL（瀏覽器端）
 // 一定要接住 POST，不然會出現 Cannot POST /pay/ecpay/result
@@ -1320,7 +1420,16 @@ app.post('/pay/ecpay/result', (req, res) => {
   return res.redirect(302, `/pay/ecpay/result?ref=${encodeURIComponent(ref)}`);
 });
 
-
+// ✅ Debug endpoint: 確認 Render 真的有跑到最新程式
+app.all('/__ping', (req, res) => {
+  console.log('✅ HIT /__ping', {
+    method: req.method,
+    ip: req.ip,
+    ua: req.headers['user-agent'],
+    time: new Date().toISOString(),
+  });
+  res.json({ ok: true, time: new Date().toISOString() });
+});
 
 
 

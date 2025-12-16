@@ -948,14 +948,16 @@ async function apiGet(path) {
       }
     }
 
-    function getPayText(code) {
-      switch (code) {
-        case 'cod': return '貨到付款';
-        case 'transfer': return '銀行轉帳';
-        case 'card': return '信用卡';
-        default: return code || '—';
-      }
-    }
+function getPayText(code) {
+  switch (code) {
+    case 'cod': return '貨到付款';
+    case 'transfer': return '銀行轉帳';
+    case 'card': return '信用卡';
+    case 'atm': return 'ATM 虛擬帳戶';
+    default: return code || '—';
+  }
+}
+
 
 
 function getTagText(tag) {
@@ -1138,6 +1140,38 @@ if (statusVal !== 'all') {
 
         const customer = o.customer || {};
         const items = Array.isArray(o.items) ? o.items : [];
+		// ===== 付款顯示（以 orders 表為準）=====
+const paymentMethod = String(o.paymentMethod || customer.pay || '').toLowerCase();
+const paymentStatus = String(o.paymentStatus || '').toLowerCase();
+
+const payStatusText =
+  (paymentStatus === 'paid')
+    ? '✅ 已付款'
+    : (paymentMethod === 'atm')
+      ? '🏧 等待轉帳'
+      : (paymentStatus === 'pending')
+        ? '⏳ 處理中'
+        : '⏳ 未付款';
+
+const payStatusStyle =
+  (paymentStatus === 'paid')
+    ? 'color:#1a7f37;font-weight:900;'
+    : 'color:#b26a00;font-weight:900;';
+
+// ATM 虛擬帳戶資訊（在 orders 欄位）
+const atmBank = String(o.atmBankCode || '').trim();
+const atmAcc  = String(o.atmVAccount || '').trim();
+const atmExp  = String(o.atmExpireDate || '').trim();
+
+const atmInfoLine =
+  (paymentMethod === 'atm' && (atmBank || atmAcc || atmExp))
+    ? `<div style="margin-top:6px;padding:8px 10px;border:1px dashed #f0d9a4;border-radius:12px;background:#fffef8;color:#9a7641;">
+         <div>🏦 銀行代碼：<strong>${escapeHtml(atmBank || '-')}</strong></div>
+         <div>🔢 虛擬帳號：<strong style="font-size:14px;">${escapeHtml(atmAcc || '-')}</strong></div>
+         <div>⏰ 到期日：<strong>${escapeHtml(atmExp || '-')}</strong></div>
+       </div>`
+    : '';
+
 
         // 金額計算（兼容你後端可能回傳 subtotal / shippingFee / totalAmount）
         const subtotal = typeof o.subtotal === 'number' ? o.subtotal : calcOrderTotal(items);
@@ -1190,7 +1224,10 @@ if (statusVal !== 'all') {
             <div class="order-block">
               <div class="order-block-title">配送 / 付款</div>
               <div>配送方式：${escapeHtml(getShipText(customer.ship))}</div>
-              <div>付款方式：${escapeHtml(getPayText(customer.pay))}</div>
+              <div>付款方式：${escapeHtml(getPayText(paymentMethod))} · <span style="${payStatusStyle}">${payStatusText}</span></div>
+${atmInfoLine}
+
+
               <div>地址 / 取貨門市：</div>
               <div>${escapeHtml(customer.address || '—')}</div>
             </div>
