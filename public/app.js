@@ -651,9 +651,38 @@ function updateCartButtonCount() {
             <div style="font-weight:900;color:#3f3a4f;font-size:13px;word-break:break-word;">
               ${escapeHtml(p.name || "")} ${specLabel}
             </div>
-            <div style="margin-top:4px;font-size:12px;color:#6c6480;">
-              單價 NT$ ${price}　×　${qty}　＝　<strong>NT$ ${lineTotal}</strong>
-            </div>
+<div style="margin-top:4px;font-size:12px;color:#6c6480;">
+  單價 NT$ ${price}　×　${qty}　＝　<strong>NT$ ${lineTotal}</strong>
+</div>
+
+<div style="margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+  <div style="display:flex; align-items:center; gap:6px; background:#fffdf5; border:1px dashed #f0d9a4; padding:6px 10px; border-radius:999px;">
+    <button type="button" class="cart-qty-btn" data-idx="${idx}" data-delta="-1"
+      style="
+        width:28px;height:28px;border-radius:10px;
+        border:1px solid rgba(188,220,255,.9);
+        background:#fff; cursor:pointer; font-weight:900;
+      "
+      aria-label="減少數量"
+    >−</button>
+
+    <span style="min-width:22px; text-align:center; font-weight:900; color:#3f3a4f;">${qty}</span>
+
+    <button type="button" class="cart-qty-btn" data-idx="${idx}" data-delta="1"
+      style="
+        width:28px;height:28px;border-radius:10px;
+        border:1px solid rgba(188,220,255,.9);
+        background:#fff; cursor:pointer; font-weight:900;
+      "
+      aria-label="增加數量"
+    >＋</button>
+  </div>
+
+  <span style="font-size:12px;color:#9a7641;">
+    （可直接在購物車調整數量）
+  </span>
+</div>
+
           </div>
 
           <button type="button" data-idx="${idx}" class="cart-remove-btn"
@@ -682,6 +711,37 @@ function updateCartButtonCount() {
         updateCartSummaryUI();
       });
     });
+	cartListEl.querySelectorAll(".cart-qty-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const idx = Number(btn.dataset.idx);
+    const delta = Number(btn.dataset.delta);
+
+    if (Number.isNaN(idx) || Number.isNaN(delta)) return;
+    const item = cartItems[idx];
+    if (!item) return;
+
+    const nextQty = (Number(item.qty) || 0) + delta;
+
+    // ✅ 不允許小於 1：小於 1 就直接刪除（跟你原本刪除一致）
+    if (nextQty <= 0) {
+      cartItems.splice(idx, 1);
+      updateCartSummaryUI();
+      return;
+    }
+
+    // ✅ 庫存檢查（沿用你既有規則：spec stock 優先，再 product stock）
+    const p = products.find((x) => x.id === item.productId);
+    const available = getAvailableStock(p, item.specKey);
+    if (available !== Infinity && nextQty > available) {
+      alert(`庫存不足～此款式最多 ${available} 件 🤍`);
+      return;
+    }
+
+    item.qty = nextQty;
+    updateCartSummaryUI();
+  });
+});
+
   }
 
   function updateCartSummaryUI() {
