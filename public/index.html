@@ -10,9 +10,10 @@
   0) Reset / Base
 ========================================================= */
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{overflow-x:hidden;}
-html, body{ width:100%; max-width:100%; }
-body{ overflow-x: clip; }
+html, body{
+  width:100%;
+  overflow-x:hidden;   /* ✅ 最穩（iOS/Android 都吃） */
+}
 html{scroll-padding-top:140px;}
 body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;
@@ -292,6 +293,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 
 /* ✅ 修正：Grid 子項目預設 min-width:auto，會把內容撐到超出右邊 */
 .pd-layout > *{ min-width:0; }
+.pd-layout > div{ min-width:0; }
 .pd-images{ min-width:0; }
 
 .pd-images{
@@ -348,7 +350,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 
 /* ✅ 保險：防止被其他樣式覆蓋造成不換行 */
 #detailSpecs{ display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
-.pd-spec-btn{ max-width:100%; }
+#detailSpecs .pd-spec-btn{ max-width:100%; }
 
 
 .pd-spec-btn{

@@ -611,9 +611,9 @@ function updateCartButtonCount() {
   const badge = document.getElementById("cartCountBadge");
   if (!badge) return;
 
-  const count = getCartCount();
-  badge.textContent = String(count);
-  badge.style.display = count > 0 ? "flex" : "none";
+  const n = getCartCount();
+  badge.textContent = String(n);
+  badge.style.display = n > 0 ? "flex" : "none";
 }
 
   function renderCartListUI() {
