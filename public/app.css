@@ -1,15 +1,21 @@
 /* =========================================================
-   ✅ SANXIAOZI: Product grid safe layout (final clean)
+   SANXIAOZI - app.css (FINAL CLEAN)
+   - Product Grid safe
+   - Product Detail image safe
+   - Thumbs row (mobile scroll)
+   - Lightbox (#imgLightbox)
+   - Hero Banner (no overlap / taller frame / contain image)
 ========================================================= */
 
-/* Grid */
+/* =========================================================
+  0) Product Grid - Safe Layout
+========================================================= */
 .product-grid{
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
 }
 
-/* Tablet */
 @media (max-width: 900px){
   .product-grid{
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -17,18 +23,17 @@
   }
 }
 
-/* Mobile: always 2 columns */
 @media (max-width: 768px){
   .product-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 }
+
 @media (max-width: 480px){
   .product-grid{ gap: 10px; }
 }
 
-/* Optional: ultra small screens fallback */
 @media (max-width: 360px){
   .product-grid{ grid-template-columns: 1fr; }
 }
@@ -63,22 +68,22 @@
   line-height: 1.2;
 }
 
-/* Bottom area stays aligned (nice grid) */
+/* Bottom area stays aligned */
 .product-bottom{
   margin-top: auto;
 }
 
 
 /* =========================================================
-   ✅ 商品詳情主圖：縮小至少一半 + sticky（final clean）
+  1) Product Detail - Main Image Safe (縮小至少一半)
 ========================================================= */
-
 #detailMainImg{
   width: 100%;
   height: auto;
-  max-height: 42vh;     /* 桌機：縮小（至少小一半） */
-  object-fit: contain;  /* 不裁切 */
+  max-height: 42vh;        /* 桌機：縮小（至少小一半） */
+  object-fit: contain;     /* 不裁切 */
   border-radius: 16px;
+  background: #fff;
 }
 
 /* 手機再更小一點，避免遮擋「購物 / 商品介紹」 */
@@ -90,114 +95,10 @@
 #detailMainImg.is-portrait{ max-height: 48vh; }
 #detailMainImg.is-landscape{ max-height: 38vh; }
 
-/* Sticky：只黏左欄（避免選到太廣黏錯元素）
-   如果你實際左欄 class 不是 pd-left，改成你那個即可 */
-#productDetail .pd-left{
-  position: sticky;
-  top: 88px;            /* 依 header 高度可調 */
-  align-self: start;
-}
-
-/* 縮圖 active */
-#detailThumbs img.active{
-  opacity: 1;
-  outline: 3px solid rgba(120,170,255,.9);
-  border-radius: 12px;
-}
-
 
 /* =========================================================
-   ✅ Lightbox（像蝦皮） final clean
+  2) Product Detail - Thumbs Row (像蝦皮)
 ========================================================= */
-
-#sxzLightbox{
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  display: none;
-  touch-action: pan-y;
-}
-#sxzLightbox.open{ display: block; }
-
-#sxzLightbox .lb-backdrop{
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,.72);
-}
-
-#sxzLightbox .lb-panel{
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-}
-
-#sxzLightbox .lb-img{
-  max-width: min(96vw, 980px);
-  max-height: 86vh;
-  border-radius: 18px;
-  background: rgba(255,255,255,.08);
-  object-fit: contain;
-  box-shadow: 0 16px 60px rgba(0,0,0,.35);
-  transition: opacity .15s ease;
-  touch-action: pan-y;
-}
-
-#sxzLightbox .lb-close{
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  border: 0;
-  background: rgba(255,255,255,.18);
-  color: #fff;
-  font-size: 26px;
-  cursor: pointer;
-}
-
-#sxzLightbox .lb-nav{
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
-  border: 0;
-  background: rgba(255,255,255,.18);
-  color: #fff;
-  font-size: 28px;
-  cursor: pointer;
-}
-#sxzLightbox .lb-prev{ left: 14px; }
-#sxzLightbox .lb-next{ right: 14px; }
-
-#sxzLightbox .lb-indicator{
-  position: absolute;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.18);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* 開 Lightbox 時禁止背景捲動 */
-body.no-scroll{
-  overflow: hidden;
-  touch-action: none;
-}
-
-
-/* =========================================================
-   📱 商品詳情：縮圖列（手機橫向滑動，像蝦皮） final clean
-========================================================= */
-
 #detailThumbs{
   display: flex;
   gap: 10px;
@@ -216,6 +117,13 @@ body.no-scroll{
   flex: 0 0 auto;
 }
 
+/* active */
+#detailThumbs img.active{
+  opacity: 1;
+  outline: 3px solid rgba(120,170,255,.9);
+  border-radius: 12px;
+}
+
 /* 手機 → 橫向滑動 */
 @media (max-width: 768px){
   #detailThumbs{
@@ -227,7 +135,6 @@ body.no-scroll{
   }
   #detailThumbs::-webkit-scrollbar{ display: none; }
 
-  /* 手機縮圖稍微放大 */
   #detailThumbs img{
     width: 72px;
     height: 72px;
@@ -236,15 +143,145 @@ body.no-scroll{
 }
 
 
-.hero-banner-slide img{
-  width:100%;
-  height:100%;
-  max-height:320px;   /* 你要多高就調 */
-  object-fit:cover;
-  display:block;
-  border-radius:18px;
+/* =========================================================
+  3) Lightbox - Use existing #imgLightbox (你的 HTML 現況)
+========================================================= */
+.lb{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.65);
+  z-index: 9999;
+  padding: 18px;
+}
+.lb.open{ display: flex; }
+
+.lb-stage{
+  max-width: min(1000px, 92vw);
+  max-height: 82vh;
+  background: #111;
+  border-radius: 18px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.hero-content h2{ font-size:16px; font-weight:900; margin-top:10px; }
-.hero-content p{ font-size:13px; color:#6c6480; margin-top:6px; line-height:1.7; }
-.hero-content{ display:flex; flex-direction:column; gap:8px; }
+.lb-stage img{
+  max-width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.lb-close{
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #fff;
+  font-size: 18px;
+}
+
+.lb-nav{
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #fff;
+  font-size: 26px;
+  line-height: 44px;
+}
+.lb-prev{ left: 14px; }
+.lb-next{ right: 14px; }
+
+.lb-hint{
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: #fff;
+  opacity: .9;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.35);
+}
+
+
+/* =========================================================
+  4) Hero Banner - FINAL (不擋字 + 外框加高 + 圖片完整顯示)
+  ✅ 你只要調兩個值：
+    - .hero-banner { height: ??? }
+    - .hero-banner-media { height: ??? }
+========================================================= */
+.hero-content{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hero-content h2{
+  font-size: 16px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.hero-content p{
+  font-size: 13px;
+  color: #6c6480;
+  margin: 0;
+  line-height: 1.7;
+}
+
+/* 外框加高：避免「圖 + 字 + 按鈕」擠在一起 */
+.hero-banner{
+  height: 640px;            /* ⭐ 外框高度（你要更高就改這） */
+}
+
+/* 圖片區高度：固定住，讓文字/按鈕永遠有空間 */
+.hero-banner-media{
+  width: 100%;
+  height: 340px;            /* ⭐ 圖片區高度（你要更高就改這） */
+  max-height: 340px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.06);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.hero-banner-media img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;      /* ✅ 完整顯示不裁切 */
+  object-position: center;
+  display: block;
+  background: #fff;
+}
+
+/* 手機：輪播卡片加高、圖片區也加高 */
+@media (max-width: 900px){
+  .hero-banner{ height: 560px; }
+  .hero-banner-media{ height: 300px; max-height: 300px; }
+}
+
+@media (max-width: 520px){
+  .hero-banner{ height: 720px; }
+  .hero-banner-media{ height: 420px; max-height: 420px; }
+}

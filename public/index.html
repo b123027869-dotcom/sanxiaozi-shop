@@ -5,20 +5,7 @@
   <title>三小隻日常百貨｜療癒生活百貨</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!--
-    =========================
-    版型說明
-    =========================
-    - 單檔靜態頁（HTML + CSS + JS）
-    - 商品資料：由後端 GET /api/products 提供
-    - 建立訂單：POST /api/orders
-    - 圖片：Supabase Storage Public Bucket
-    - 功能：分類、搜尋、商品詳情、加入購物車、結帳、訂單查詢（前端模板）
-  -->
-
   <style>
-  
-  
 /* =========================================================
   0) Reset / Base
 ========================================================= */
@@ -55,10 +42,7 @@ header{
   background:radial-gradient(circle,#fff,#ffe9a7 45%,#ffd26b);
   display:flex;align-items:center;justify-content:center;
 }
-.nav-links{
-  display:flex; gap:14px; align-items:center;
-  font-size:13px;
-}
+.nav-links{display:flex; gap:14px; align-items:center; font-size:13px;}
 .nav-links a{
   padding:6px 10px;
   border-radius:999px;
@@ -75,11 +59,13 @@ header{
   background:linear-gradient(135deg,#ffe38a,#f5b944);
   border:none;cursor:pointer;
   box-shadow:0 4px 12px rgba(240,188,62,.45);
+  font-weight:800;
 }
 .btn-secondary{
   padding:6px 12px;border-radius:999px;
   border:1px solid #bcdcff;
   background:#e8f3ff;
+  cursor:pointer;
 }
 
 /* =========================================================
@@ -95,41 +81,21 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   background:linear-gradient(180deg,#fffdf3, #ffffff);
   border:1px solid rgba(188,220,255,.7);
   border-radius:22px;
-  padding:16px;
+  padding:24px;
   box-shadow:0 10px 28px rgba(118,165,228,.18);
   position:relative;
-  isolation:isolate; /* ✅ 避免輪播圖層跑到下面區塊 */
+  isolation:isolate;
   z-index:1;
-  min-height: 520px;   /* ← 你可以試 500 / 540 / 580 */
-  padding: 24px;       /* 讓裡面更舒服 */
 }
-.hero-top{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:12px; flex-wrap:wrap;
-}
-.hero-search{
-  display:flex; align-items:center; gap:8px;
-  padding:8px 12px;
-  border-radius:999px;
-  background:#fff;
-  border:1px solid rgba(188,220,255,.9);
-  box-shadow:0 6px 16px rgba(118,165,228,.12);
-  min-width:280px;
-}
-.hero-search input{
-  border:none; outline:none; width:100%;
-  font-size:13px; background:transparent;
-}
+.hero-top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
 .hero-main{
   margin-top:14px;
   display:grid;
   grid-template-columns:1.2fr .9fr;
   gap:18px;
-  align-items:start; /* ✅ 右側輪播貼齊上方 */
+  align-items:start;
 }
-@media(max-width:900px){
-  .hero-main{grid-template-columns:1fr;}
-}
+@media(max-width:900px){ .hero-main{grid-template-columns:1fr;} }
 
 .hero-left-title{font-size:22px;font-weight:800; letter-spacing:.2px;}
 .hero-left-sub{margin-top:6px; font-size:13px; color:#6c6480;}
@@ -147,168 +113,41 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   padding:10px 14px;border-radius:999px;border:none;cursor:pointer;
   background:linear-gradient(135deg,#ffe38a,#f5b944);
   box-shadow:0 6px 16px rgba(240,188,62,.35);
-  font-weight:700;
+  font-weight:900;
 }
 .hero-secondary-btn{
   padding:10px 14px;border-radius:999px;cursor:pointer;
   background:#e8f3ff; border:1px solid #bcdcff;
+  font-weight:800;
 }
 .hero-left-note{margin-top:10px; font-size:13.5px; color:#5c452b; line-height:1.75;}
 
 /* =========================================================
-  5) Hero Banner (Right side carousel) - ✅ 最終乾淨版
+  5) Search strip (moved above categories)
 ========================================================= */
-.hero-banner-badge{ display:none !important; } /* 你說不要顯示 9折/95折 */
-
-.hero-banner{
-  position:relative;
-  border-radius:26px;
-  overflow:hidden;
-  border:1px solid rgba(188,220,255,.75);
-  background:linear-gradient(180deg,#ffffff,#fffdf3);
-  box-shadow:0 14px 36px rgba(118,165,228,.22);
-
-  height:500px;
-  padding:20px;
-
-  display:flex;
-  flex-direction:column;
-  align-self:start;
+.search-strip{
+  position:sticky;
+  top:72px;
+  z-index:50;
+  max-width:1100px;
+  margin:10px auto 10px;
+  padding:0 16px;
 }
+@media (max-width:520px){ .search-strip{ top:64px; } }
 
-.hero-banner-slides{
-  position:relative;
-  flex:1;
-  min-height:0;
-}
-
-.hero-banner-slide{
-  position:absolute;
-  inset:0;
-  opacity:0;
-  pointer-events:none;
-  transform:translateY(6px);
-  transition:opacity .35s ease, transform .35s ease;
-  padding:14px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.hero-banner-slide.active{
-  opacity:1;
-  pointer-events:auto;
-  transform:translateY(0);
-}
-.hero-banner-top{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.hero-banner-tag{
-  display:inline-flex;
-  font-size:13px;
-  padding:6px 10px;
+.hero-search{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px;
   border-radius:999px;
-  background:#fff6d3;
-  border:1px dashed #f0d9a4;
-  color:#7a5c3a;
-  font-weight:800;
-}
-.hero-banner-title{
-  margin-top:8px;
-  font-size:16px;
-  font-weight:900;
-  color:#3f3a4f;
-}
-.hero-banner-sub{
-  margin-top:6px;
-  font-size:13px;
-  color:#6c6480;
-  line-height:1.7;
-}
-
-
-
-
-/* ✅ Hero 輪播主圖：填滿、不留白（電商 Banner 標準） */
-.hero-banner-media img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
   background:#fff;
-}
-
-.hero-banner-cta{
-  margin-top:auto;
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-}
-
-.hero-banner-cta button{
-  padding:9px 12px;
-  border-radius:999px;
-  border:none;
-  cursor:pointer;
-  font-weight:900;
-}
-.hero-banner-cta .cta-primary{
-  background:linear-gradient(135deg,#ffe38a,#f5b944);
-  box-shadow:0 6px 16px rgba(240,188,62,.25);
-}
-.hero-banner-cta .cta-secondary{
-  background:#e8f3ff;
-  border:1px solid #bcdcff;
-}
-.hero-banner-dots-row{
-  flex:0 0 auto;
-  padding:0 14px 14px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.hero-banner-hint{font-size:11px;color:#9a7641;}
-.hero-dots{display:flex;gap:8px}
-.hero-dot{
-  width:10px;height:10px;
-  border-radius:999px;
   border:1px solid rgba(188,220,255,.9);
-  background:#ffffff;
-  cursor:pointer;
-  padding:0;
+  box-shadow:0 6px 16px rgba(118,165,228,.12);
+  min-width:280px;
 }
-.hero-dot.active{
-  background:#f5b944;
-  border-color:#f0d9a4;
-  box-shadow:0 0 0 3px rgba(255,210,96,.25);
+.hero-search input{
+  border:none; outline:none; width:100%;
+  font-size:13px; background:transparent;
 }
-@media(max-width:900px){ .hero-banner{height:300px;} }
-@media(max-width:520px){
-  .hero-banner-media{aspect-ratio:4/3;}
-  .hero-banner-cta button{width:100%;}
-}
-
-
-
-/* ✅ 強制 Hero 輪播主圖 1:1（放在 CSS 最底下） */
-.hero-banner-media{
-  aspect-ratio: 1 / 1 !important;
-   max-height: 230px;       /* ⭐ 關鍵：限制圖片區高度 */
-    margin: 0 auto;          /* 置中，看起來更精緻 */
-}
-.hero-banner-media img{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;  /* 不留白，填滿 */
-  object-position: center !important;
-}
-
-
 
 /* =========================================================
   6) Section / Category
@@ -318,13 +157,8 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   font-size:16px; font-weight:800;
   display:flex; flex-direction:column; gap:4px;
 }
-.section-title span{
-  font-size:13px; font-weight:500; color:#7a5c3a;
-}
-.category-row{
-  margin-top:10px;
-  display:flex; flex-wrap:wrap; gap:8px;
-}
+.section-title span{font-size:13px; font-weight:500; color:#7a5c3a;}
+.category-row{margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;}
 .category-chip{
   cursor:pointer;
   padding:8px 12px;
@@ -343,14 +177,16 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   7) Product Grid
 ========================================================= */
 .product-grid{
-  margin-top:14px;
   display:grid;
-  grid-template-columns:repeat(5,1fr);
+  grid-template-columns:repeat(5, minmax(0, 1fr));
   gap:14px;
+  margin-top:14px;
 }
-@media(max-width:768px){
-  .product-grid{grid-template-columns:repeat(2,1fr)}
-}
+@media(max-width:900px){ .product-grid{grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;} }
+@media(max-width:768px){ .product-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;} }
+@media(max-width:480px){ .product-grid{ gap:10px; } }
+@media(max-width:360px){ .product-grid{ grid-template-columns:1fr; } }
+
 .product-card{
   position:relative;
   background:#fff;
@@ -359,9 +195,12 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   padding:8px;
   box-shadow:0 10px 28px rgba(118,165,228,.25);
   transition:.15s;
+  min-width:0;
+  max-width:100%;
+  display:flex;
+  flex-direction:column;
 }
 .product-card:hover{transform:translateY(-3px)}
-
 .product-tag{
   position:absolute; top:10px; left:10px;
   padding:4px 8px; border-radius:999px;
@@ -369,12 +208,10 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   background:#fff6d3;
   border:1px dashed #f0d9a4;
 }
-
-/* ✅ 商品圖片保護 */
 .product-img{
   position:relative;
   padding-top:100%;
-  background:#fff !important;
+  background:#fff;
   border-radius:14px;
   overflow:hidden;
   border:1px solid rgba(0,0,0,.06);
@@ -383,33 +220,90 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   position:absolute;inset:0;
   width:100%;height:100%;
   object-fit:cover;
-  filter:none !important;
-  background:#fff !important;
+  display:block;
 }
+.product-name{
+  margin-top:8px;font-size:13px;font-weight:800;
+  word-break:break-word; overflow-wrap:anywhere;
+}
+.product-bottom{margin-top:auto; display:flex; flex-direction:column; gap:8px;}
+.product-price{font-weight:900;}
+.card-hint{margin-top:8px;font-size:12px;color:#9a7641;line-height:1.2;}
 
-.product-name{margin-top:8px;font-size:13px;font-weight:800;}
-.product-bottom{margin-top:8px; display:flex; flex-direction:column; gap:8px;}
-.product-price-row{display:flex; align-items:center; justify-content:space-between;}
-.product-price{font-weight:800;}
-.product-like-btn{
-  width:34px;height:34px;border-radius:999px;
-  border:1px solid rgba(188,220,255,.9);
+/* =========================================================
+  8) Product Detail
+========================================================= */
+.card{
+  margin-top:26px;
   background:#fff;
-  cursor:pointer;
+  border-radius:22px;
+  padding:16px;
+  box-shadow:0 10px 28px rgba(118,165,228,.2);
 }
-.product-like-btn.active{border-color:#ffb3c7;}
+.product-detail{display:none;}
 
-.card-spec-row{display:flex; gap:6px; flex-wrap:wrap;}
-.card-spec-btn{
-  padding:6px 10px; border-radius:999px;
+.pd-layout{display:grid; grid-template-columns:1.4fr 1.1fr; gap:20px;}
+@media(max-width:768px){ .pd-layout{grid-template-columns:1fr} }
+
+.pd-images{
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+.pd-main-img{background:#fff;padding:10px;}
+#detailMainImg{
+  width:100%;
+  height:auto;
+  max-height:42vh;
+  object-fit:contain;
+  border-radius:16px;
+  background:#fff;
+  display:block;
+  margin:0 auto 12px auto;
+  cursor:zoom-in;
+}
+@media (max-width:768px){ #detailMainImg{ max-height:34vh; } }
+#detailMainImg.is-portrait{ max-height:48vh; }
+#detailMainImg.is-landscape{ max-height:38vh; }
+
+.pd-thumbs{
+  display:flex; gap:10px;
+  padding:10px;
+  border-top:1px solid rgba(0,0,0,.06);
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.pd-thumbs::-webkit-scrollbar{ display:none; }
+#detailThumbs img{
+  width:64px;height:64px;
+  object-fit:cover;
+  border-radius:12px;
+  cursor:pointer;
+  opacity:.65;
+  transition:opacity .2s, outline .2s;
+  flex:0 0 auto;
+}
+#detailThumbs img.active{
+  opacity:1;
+  outline:3px solid rgba(120,170,255,.9);
+  border-radius:12px;
+}
+
+.pd-info-title{font-size:18px;font-weight:900;}
+.pd-info-sub{margin-top:4px;font-size:13px;color:#6c6480;}
+.pd-price{margin-top:10px;font-size:16px;font-weight:900;}
+.pd-price span{font-size:18px;}
+.pd-spec-title{margin-top:12px;font-size:13px;font-weight:800;}
+.pd-spec-options{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}
+.pd-spec-btn{
+  padding:8px 12px; border-radius:999px;
   border:1px solid rgba(188,220,255,.9);
   background:#fff; cursor:pointer; font-size:13px;
 }
-.card-spec-btn.active{
-  background:#e8f3ff;
-  border-color:#9fd0ff;
-}
-.card-action-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.pd-spec-btn.active{ background:#fff6d3; border-color:#f0d9a4; }
+.pd-desc-detail{margin-top:12px;font-size:13px;color:#4f3b2a; line-height:1.75;}
+
 .qty-control{display:flex; align-items:center; gap:6px;}
 .qty-btn{
   width:30px; height:30px; border-radius:10px;
@@ -422,96 +316,12 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   border:1px solid rgba(188,220,255,.9);
   outline:none;
 }
-.btn-cart{
-  padding:8px 12px; border-radius:12px; cursor:pointer;
-  border:none;
-  background:linear-gradient(135deg,#ffe38a,#f5b944);
-  box-shadow:0 6px 16px rgba(240,188,62,.25);
-  font-weight:800;
-}
 
 /* =========================================================
-  8) Product Detail
+  9) Forms
 ========================================================= */
-.product-detail{display:none;}
-.pd-layout{
-  display:grid;
-  grid-template-columns:1.4fr 1.1fr;
-  gap:20px;
-}
-@media(max-width:768px){
-  .pd-layout{grid-template-columns:1fr}
-}
-.pd-images{
-  background:#fff !important;
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:18px;
-  box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-.pd-main-img{background:#fff !important;padding:10px;}
-.pd-main-img img{
-  max-width:100%;
-  max-height:520px;
-  object-fit:contain;
-  filter:none !important;
-}
-.pd-thumb-btn{
-  width:90px;height:90px;
-  border-radius:10px;
-  background:#fff !important;
-  border:2px solid rgba(0,0,0,.08);
-  overflow:hidden;
-}
-.pd-thumb-btn img{width:100%;height:100%;object-fit:cover;}
-.pd-thumb-btn.active{
-  border-color:#ffd260;
-  box-shadow:0 0 0 3px rgba(255,210,96,.35);
-}
-.pd-info-title{font-size:18px;font-weight:900;}
-.pd-info-sub{margin-top:4px;font-size:13px;color:#6c6480;}
-.pd-price{margin-top:10px;font-size:16px;font-weight:900;}
-.pd-price span{font-size:18px;}
-.pd-spec-title{margin-top:12px;font-size:13px;font-weight:800;}
-.pd-spec-options{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;}
-.pd-spec-btn{
-  padding:8px 12px; border-radius:999px;
-  border:1px solid rgba(188,220,255,.9);
-  background:#fff; cursor:pointer; font-size:13px;
-}
-.pd-spec-btn.active{
-  background:#fff6d3;
-  border-color:#f0d9a4;
-}
-.pd-thumbs{
-  display:flex; gap:10px; flex-wrap:wrap;
-  padding:10px;
-  border-top:1px solid rgba(0,0,0,.06);
-}
-.pd-desc-detail{margin-top:12px;font-size:13px;color:#4f3b2a; line-height:1.75;}
-
-/* =========================================================
-  9) Cards / Sections
-========================================================= */
-.card{
-  margin-top:26px;
-  background:#fff;
-  border-radius:22px;
-  padding:16px;
-  box-shadow:0 10px 28px rgba(118,165,228,.2);
-}
-
-/* =========================================================
-  10) Forms
-========================================================= */
-.form-row{
-  margin-top:10px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-@media(max-width:768px){
-  .form-row{grid-template-columns:1fr;}
-}
+.form-row{margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+@media(max-width:768px){ .form-row{grid-template-columns:1fr;} }
 label{display:block; font-size:13px; font-weight:800; margin:10px 0 6px;}
 input, select, textarea{
   width:100%;
@@ -523,15 +333,11 @@ input, select, textarea{
   font-size:13px;
 }
 textarea{min-height:90px; resize:vertical;}
-
-.field-error{margin-top:6px;font-size:13px;color:#c0392b;display:none}
-.field-ok{margin-top:6px;font-size:13px;color:#2f6b3f;display:none}
 .form-hint{margin-top:6px;font-size:13px;color:#9a7641;}
-.form-note{margin-top:10px;font-size:13px;color:#7a5c3a;}
 .form-actions{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
 
 /* =========================================================
-  11) Lightbox
+  10) Lightbox (legacy #imgLightbox)
 ========================================================= */
 .lb{
   position:fixed; inset:0;
@@ -590,7 +396,7 @@ textarea{min-height:90px; resize:vertical;}
 }
 
 /* =========================================================
-  12) Footer
+  11) Footer
 ========================================================= */
 footer{
   margin-top:30px;
@@ -601,233 +407,138 @@ footer{
 }
 
 /* =========================================================
-  13) 右下角裝飾（你有 HTML 但沒 CSS，不寫也不影響功能）
+  12) Hero Banner FINAL (最終覆蓋：不蓋字 + 外框加高 + 圖片完整顯示)
 ========================================================= */
-.sxz-cloud-buddies{position:fixed;right:10px;bottom:10px;pointer-events:none;opacity:.25}
-  
-/* =========================================================
-  官網付款方式公告（可愛提示）
-========================================================= */
-.notice-cod{
-  margin-top:14px;
-  padding:14px 16px;
-  border-radius:18px;
-  background:linear-gradient(180deg,#fff7dc,#fff1c6);
-  border:1px dashed #f0d9a4;
-  display:flex;
-  gap:12px;
-  align-items:flex-start;
-  box-shadow:0 6px 16px rgba(240,188,62,.18);
-}
-
-.notice-icon{
-  font-size:28px;
-  line-height:1;
-  filter:drop-shadow(0 2px 0 rgba(255,255,255,.9));
-}
-
-.notice-content{flex:1;}
-
-.notice-title{
-  font-size:15px;
-  font-weight:900;
-  color:#7a5c3a;
-  margin-bottom:4px;
-}
-
-.notice-text{
-  font-size:14px;              /* 字體放大 */
-  line-height:1.7;
-  color:#5c452b;
-}
-
-.notice-text strong{color:#d35400;}
-
-.notice-shopee-btn{
-  margin-top:10px;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:8px 14px;
-  border-radius:999px;
-  background:#ffefe6;
-  border:1px solid #ffb08a;
-  color:#b8481e;
-  font-size:13px;
-  font-weight:900;
-  text-decoration:none;
-  transition:transform .15s, box-shadow .15s;
-  animation: sxz-bounce 2.2s ease-in-out infinite;
-}
-
-.notice-shopee-btn:hover{
-  transform:translateY(-2px);
-  box-shadow:0 6px 14px rgba(255,120,60,.25);
-  animation-play-state:paused; /* hover 時停一下，避免晃眼 */
-}
-
-@keyframes sxz-bounce{
-  0%, 60%, 100% { transform:translateY(0); }
-  70% { transform:translateY(-3px); }
-  80% { transform:translateY(0); }
-  90% { transform:translateY(-2px); }
-}
-
-
-/* Hero feature pills bigger */
-.hero-feat, .hero-feature, .hero-pill, .hero-chip, .hero-badge{
-  font-size:14px;
-}
-
-.hero-features .chip,
-.hero-features .feat,
-.hero-features span{
-  font-size: 14px;
-}
-
-
-/* =========================================================
-  搜尋條（移到商品分類上方）
-========================================================= */
-.search-strip{
-  position:sticky;
-  top:72px;
-  z-index:50;
-  max-width:1100px;
-  margin:10px auto 10px;
-  padding:0 16px;
-}
-@media (max-width:520px){
-  .search-strip{ top:64px; }
-}
-
-/* =========================================================
-  Mobile：輪播卡片更高、更好看
-========================================================= */
-@media (max-width:520px){
-  .search-strip{ margin:10px auto 4px; }
-  .hero-banner{ height: 560px; }           /* 原本 420，手機加高 */
-  .hero-banner-media{ max-height: 320px; } /* 原本約 230，手機加高 */
-}
-
 .hero-banner{
-  touch-action: pan-y; /* 允許上下捲動，仍可偵測左右滑 */
+  position:relative;
+  border-radius:26px;
+  overflow:hidden;
+  border:1px solid rgba(188,220,255,.75);
+  background:linear-gradient(180deg,#ffffff,#fffdf3);
+  box-shadow:0 14px 36px rgba(118,165,228,.22);
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  align-self:start;
+  height:640px;           /* ⭐ 外框加高：想更高就改這 */
+  touch-action: pan-y;
+}
+.hero-banner-slides{ position:relative; flex:1; min-height:0; }
+
+.hero-banner-slide{
+  position:absolute; inset:0;
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(6px);
+  transition:opacity .45s ease, transform .45s ease;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:10px;
+}
+.hero-banner-slide.active{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0);
 }
 
-/* =========================================================
-   Hero Banner - Mobile Height
-========================================================= */
-@media (max-width: 768px) {
-  .hero-banner {
-    height: 320px;       /* 原本通常 420~500，這個比較像蝦皮 */
-  }
-  .hero-banner-slide img {
-    object-fit: cover;
-  }
+.hero-tag{
+  position:absolute;
+  top:14px; left:14px;
+  padding:6px 12px;
+  font-size:12px;
+  font-weight:900;
+  border-radius:999px;
+  background:#ff5a5a;
+  color:#fff;
+  z-index:5;
+  box-shadow:0 6px 16px rgba(0,0,0,.15);
 }
 
-/* =========================================================
-   Hero Banner - Fade Animation
-========================================================= */
-.hero-banner-slide {
-  opacity: 0;
-  transition: opacity .6s ease;
-  pointer-events: none;
+.hero-banner-media{
+  width:100%;
+  height:340px;           /* ⭐ 圖片區高度：想更高就改這 */
+  border-radius:18px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:8px;
+}
+.hero-banner-media img{
+  width:100%;
+  height:100%;
+  object-fit:contain;     /* ✅ 完整顯示 */
+  object-position:center;
+  display:block;
+  background:#fff;
 }
 
-.hero-banner-slide.active {
-  opacity: 1;
-  pointer-events: auto;
+.hero-content{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+.hero-content h2{ font-size:16px; font-weight:900; margin:0; }
+.hero-content p{ font-size:13px; color:#6c6480; margin:0; line-height:1.7; }
+
+.hero-banner-cta{
+  margin-top:auto;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.hero-banner-cta button{
+  padding:9px 12px;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  font-weight:900;
+}
+.hero-banner-cta .cta-primary{
+  background:linear-gradient(135deg,#ffe38a,#f5b944);
+  box-shadow:0 6px 16px rgba(240,188,62,.25);
+}
+.hero-banner-cta .cta-secondary{
+  background:#e8f3ff;
+  border:1px solid #bcdcff;
 }
 
-/* =========================================================
-   Hero Tag
-========================================================= */
-.hero-tag {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 900;
-  border-radius: 999px;
-  background: #ff5a5a;
-  color: #fff;
-  z-index: 5;
-  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+.hero-banner-dots-row{
+  flex:0 0 auto;
+  padding:10px 4px 2px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.hero-banner-hint{font-size:11px;color:#9a7641;}
+.hero-dots{display:flex;gap:8px}
+.hero-dot{
+  width:10px;height:10px;
+  border-radius:999px;
+  border:1px solid rgba(188,220,255,.9);
+  background:#ffffff;
+  cursor:pointer;
+  padding:0;
+}
+.hero-dot.active{
+  background:#f5b944;
+  border-color:#f0d9a4;
+  box-shadow:0 0 0 3px rgba(255,210,96,.25);
 }
 
-.hero-tag {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 900;
-  border-radius: 999px;
-  background: #ff5a5a;
-  color: #fff;
-  z-index: 5;
-  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+@media (max-width:900px){
+  .hero-banner{ height: 560px; }
+  .hero-banner-media{ height: 300px; }
 }
-
-/* =========================================================
-   Product Detail Image Fix（主圖過大修正）
-========================================================= */
-
-/* 商品詳情整體不要被圖片撐爆 */
-#productDetail {
-  scroll-margin-top: 80px; /* 避免被 header 吃掉 */
+@media (max-width:520px){
+  .hero-banner{ height: 720px; }
+  .hero-banner-media{ height: 420px; }
 }
-
-/* 主圖容器 */
-#detailMainImg {
-  width: 100%;
-  max-height: 45vh;           /* ⭐ 關鍵：高度限制為螢幕 45% */
-  object-fit: contain;        /* 保留比例、不裁切 */
-  border-radius: 14px;
-  background: #fff;
-  display: block;
-  margin: 0 auto 12px auto;   /* 底部留空，讓下面內容露出 */
-}
-
-/* 桌機再小一點（更舒服） */
-@media (min-width: 1024px) {
-  #detailMainImg {
-    max-height: 360px;        /* 桌機固定高度 */
-  }
-}
-
-/* 縮圖區不要被擠走 */
-#detailThumbs {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  overflow-x: auto;
-}
-
-#detailThumbs img {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 8px;
-  flex-shrink: 0;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-
-#detailThumbs img:hover {
-  border-color: #ffb703;
-}
-
-
-</style>
+  </style>
 </head>
 
 <body>
-  <!-- =========================================================
-    Header / Navbar
-  ========================================================= -->
   <header>
     <div class="nav">
       <div class="logo">
@@ -835,12 +546,10 @@ footer{
         三小隻日常小物百貨
       </div>
 
-      <nav class="nav-links" aria-label="主導覽">
-        <a href="#products">商品</a>
-        <a href="#checkout">結帳</a>
-        <a href="#order-query">訂單查詢</a>
-        <a href="#about">品牌故事</a>
-      </nav>
+<nav class="nav-links" aria-label="主導覽">
+  <a href="#products">商品</a>
+  <a href="#order-query">訂單查詢</a>
+</nav>
 
       <div class="nav-action">
         <button class="btn-primary" type="button" onclick="scrollToSection('cart')">
@@ -851,15 +560,12 @@ footer{
   </header>
 
   <main>
-    <!-- =========================================================
-      Hero（首頁 Banner / 搜尋 / 主打輪播）
-    ========================================================= -->
     <section class="hero" aria-label="首頁主視覺">
-<div class="hero-top">
-  <div style="font-size:14px;color:#9a7641;">
-    歡迎來到 <strong>三小隻日常百貨</strong>
-  </div>
-</div>
+      <div class="hero-top">
+        <div style="font-size:14px;color:#9a7641;">
+          歡迎來到 <strong>三小隻日常百貨</strong>
+        </div>
+      </div>
 
       <div class="hero-main">
         <div>
@@ -871,14 +577,14 @@ footer{
           <div class="hero-benefits-row">
             <div class="hero-benefit">滿 NT$699 超商免運</div>
             <div class="hero-benefit">無需註冊會員，一次填寫就能下單</div>
-            <div class="hero-benefit">留 <span class="hero-pill-text">
-本網站暫不支持<strong style="font-weight:900;">貨到付款</strong>，
-<a href="https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263"
-   target="_blank"
-   style="color:#ee4d2d;font-weight:900;text-decoration:underline;">
-前往蝦皮可貨到付款
-</a>
-</span></div>
+            <div class="hero-benefit">
+              本網站暫不支持<strong style="font-weight:900;">貨到付款</strong>，
+              <a href="https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263"
+                 target="_blank"
+                 style="color:#ee4d2d;font-weight:900;text-decoration:underline;">
+                前往蝦皮可貨到付款
+              </a>
+            </div>
           </div>
 
           <div class="hero-actions-row">
@@ -891,40 +597,35 @@ footer{
           </div>
 
           <div class="hero-left-note">
-		  <br />
-            喜歡的商品都可以先加入購物車， 接著在「結帳區」一次填寫收件資料就可以囉！<br />
-			對商品有疑慮,可以通過下方的官方 L I N E連結像我們詢問索取實圖<br />
-			訂單成立後，我們會依序為你準備出貨<br />
-			有需要確認的地方也會主動與你聯絡，謝謝你的耐心等待 🤍
+            <br />
+            喜歡的商品都可以先加入購物車，接著在「結帳區」一次填寫收件資料就可以囉！<br />
+            對商品有疑慮，可以通過下方的官方 LINE 連結像我們詢問索取實圖<br />
+            訂單成立後，我們會依序為你準備出貨<br />
+            有需要確認的地方也 也會主動與你聯絡，謝謝你的耐心等待 🤍
           </div>
         </div>
 
         <aside class="hero-banner" aria-label="主打輪播">
           <div class="hero-banner-slides" id="heroBannerSlides"></div>
           <div class="hero-banner-dots-row">
-            <span class="hero-banner-hint">     商品輪播中，可點小點切換。</span>
+            <span class="hero-banner-hint">商品輪播中，可點小點切換。</span>
             <div class="hero-dots" id="heroBannerDots"></div>
           </div>
         </aside>
       </div>
-    
-<!-- =========================================================
-  搜尋（移到商品分類上方，手機更好用）
-========================================================= -->
-<div class="search-strip" aria-label="商品搜尋">
-  <div class="hero-search">
-    <span class="hero-search-icon">🔍</span>
-    <input
-      id="heroSearchInput"
-      type="search"
-      placeholder="想找什麼小物？例：帆布袋、馬克杯、桌上小物…"
-    />
-  </div>
-</div>
-<!-- ✅ close search-strip -->
-    <!-- =========================================================
-      商品分類
-    ========================================================= -->
+    </section>
+
+    <div class="search-strip" aria-label="商品搜尋">
+      <div class="hero-search">
+        <span class="hero-search-icon">🔍</span>
+        <input
+          id="heroSearchInput"
+          type="search"
+          placeholder="想找什麼小物？例：帆布袋、馬克杯、桌上小物…"
+        />
+      </div>
+    </div>
+
     <section aria-label="商品分類">
       <h3 class="section-title">
         商品分類
@@ -941,9 +642,6 @@ footer{
       </div>
     </section>
 
-    <!-- =========================================================
-      商品列表（由 JS 動態渲染）
-    ========================================================= -->
     <section id="products" aria-label="商品列表">
       <h3 class="section-title">
         精選商品
@@ -967,13 +665,10 @@ footer{
       </div>
     </section>
 
-    <!-- =========================================================
-      商品詳情（點商品後顯示）
-    ========================================================= -->
     <section class="card product-detail" id="productDetail" aria-label="商品詳情">
       <h3 class="section-title">
-        <span id="detailTitlePrefix">商品詳情｜</span><span id="detailTitleMain"></span>
-        <span id="detailSubtitle"> </span>
+        <span>商品詳情｜</span><span id="detailTitleMain"></span>
+        <span id="detailSubtitle"></span>
       </h3>
 
       <div class="pd-layout">
@@ -990,7 +685,6 @@ footer{
 
           <div class="pd-price">
             NT$ <span id="detailPrice">0</span>
-            <span id="detailPriceNote"></span>
           </div>
 
           <div>
@@ -1007,7 +701,7 @@ footer{
 
             <button type="button" class="btn-primary" id="detailAddBtn">🛒 加入購物車</button>
 
-            <button type="button" class="btn-secondary btn-line" id="detailLineBtn">
+            <button type="button" class="btn-secondary" id="detailLineBtn">
               💬 使用 LINE 聯繫小店長
             </button>
 
@@ -1021,9 +715,6 @@ footer{
       </div>
     </section>
 
-    <!-- =========================================================
-      購物車
-    ========================================================= -->
     <section class="card" id="cart" aria-label="購物車">
       <h3 class="section-title">
         購物車
@@ -1048,11 +739,9 @@ footer{
           <span>小計</span><strong id="sumSubtotal">NT$ 0</strong>
         </div>
         <div style="display:flex;justify-content:space-between;margin:4px 0;">
-         <span>運費 <span style="font-size:13px;color:#9a7641;">
-  (<strong id="shippingRuleText" style="font-weight:900;"></strong>)
-</span></span>
-
-
+          <span>運費 <span style="font-size:13px;color:#9a7641;">
+            (<strong id="shippingRuleText" style="font-weight:900;"></strong>)
+          </span></span>
           <strong id="sumShipping">NT$ 0</strong>
         </div>
         <div style="display:flex;justify-content:space-between;margin:6px 0;border-top:1px dashed #f0d9a4;padding-top:8px;">
@@ -1071,9 +760,6 @@ footer{
       </div>
     </section>
 
-    <!-- =========================================================
-      結帳
-    ========================================================= -->
     <section class="card" id="checkout" aria-label="結帳">
       <h3 class="section-title">
         結帳資訊（無需註冊會員）
@@ -1135,7 +821,6 @@ footer{
               style="margin-top:8px;display:none;"
             />
 
-            <!-- 送出時會把組合後的完整 Email 放進這裡（保留你原本 payload 讀取 checkoutEmail 的寫法） -->
             <input type="hidden" id="checkoutEmail" />
 
             <div class="form-hint" id="emailHint">會寄送訂單明細與出貨通知。</div>
@@ -1149,9 +834,10 @@ footer{
         <div>
           <label for="checkoutAddress">收件地址 / 超商門市（必填）</label>
           <input type="text" id="checkoutAddress" placeholder="超商取貨可填：超商 + 門市名稱" />
-        
-          <div class="form-hint" id="checkoutAddressHint">請填寫：超商（7-11/全家）請填「門市名稱」；宅配請填完整地址。</div>
-</div>
+          <div class="form-hint" id="checkoutAddressHint">
+            請填寫：超商（7-11/全家）請填「門市名稱」；宅配請填完整地址。
+          </div>
+        </div>
 
         <div class="form-row">
           <div>
@@ -1179,7 +865,6 @@ footer{
           <textarea id="checkoutNote" placeholder="例如：希望盡量幫我在 18:00 前送達，或是其他小提醒。"></textarea>
         </div>
 
-
         <div class="form-actions">
           <button type="submit" class="btn-primary">送出訂單</button>
           <button type="button" class="btn-secondary" onclick="backToProducts()">
@@ -1189,128 +874,11 @@ footer{
       </form>
     </section>
 
-    <!-- =========================================================
-      聯絡 / 出貨說明
-    ========================================================= -->
-    <section class="card" id="service-info" aria-label="聯絡與出貨說明">
-      <h3 class="section-title">
-        聯絡小店長 & 出貨說明
-        <span>有問題、想追蹤訂單都可以找我們</span>
-      </h3>
-
-      <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;">
-        <div style="flex:2;min-width:220px;font-size:13px;color:#6b502c;">
-          <p style="margin-bottom:6px;">
-            有任何商品問題、想確認庫存、修改訂單資料，<br />
-            都可以透過 <strong>官方 LINE</strong> 或 <strong>蝦皮聊聊</strong> 找三小隻小店長。
-          </p>
-
-          <p style="margin-bottom:4px;">
-            <strong>客服時間：</strong><br />
-            平日：<span>13:00 – 22:00</span><br />
-            假日：視出貨狀況不定時回覆（通常也會偷看訊息 😆）
-          </p>
-
-          <p style="margin-bottom:4px;">
-            <strong>出貨說明：</strong><br />
-            ・下單後約 <strong>1–3 個工作天</strong> 出貨（遇連假可能順延）<br />
-            ・超商取貨約再 1–3 天到店，宅配約 1–3 天送達<br />
-            ・若有急件或指定時間，可以先 LINE 私訊討論<br />
-            ・較長備貨為 12-15 天出貨
-          </p>
-
-          <p style="margin-top:6px;">
-            <strong>小提醒：</strong>結帳完成後，<br />
-            也可以 Screenshot 訂單 + 加入 LINE，方便我們協助查詢與追蹤。
-          </p>
-        </div>
-
-        <div style="
-          display:inline-block;
-          padding:12px 14px;
-          border-radius:16px;
-          background:#fffdf7;
-          border:1px solid #f0d9a4;
-          box-shadow:0 2px 4px rgba(0,0,0,0.04);
-        ">
-          <img
-            src="basic-images/line-qr.png"
-            alt="官方 LINE QR Code"
-            style="width:140px;height:140px;border-radius:12px;"
-          />
-          <div style="margin-top:8px;font-size:14px;color:#6b502c;">
-            官方 LINE ID：<br />
-            <strong style="font-size:17px;color:#00b43c;">@301gfuh</strong>
-          </div>
-        </div>
-
-        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;align-items:center;">
-          <a
-            href="https://lin.ee/FDKoij6"
-            target="_blank"
-            rel="noopener noreferrer"
-            style="
-              display:inline-flex;
-              align-items:center;
-              gap:6px;
-              padding:8px 14px;
-              border-radius:999px;
-              background:#e4ffe9;
-              border:1px solid #8cd49d;
-              font-size:13px;
-              color:#2f6b3f;
-              text-decoration:none;
-              font-weight:600;
-            "
-          >
-            <span style="
-              width:20px;height:20px;border-radius:999px;
-              background:#00b43c;color:#fff;
-              display:flex;align-items:center;justify-content:center;
-              font-size:13px;
-            ">L</span>
-            <span>加入 LINE 詢問 / 追蹤訂單</span>
-          </a>
-
-          <a
-            href="https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263"
-            target="_blank"
-            rel="noopener noreferrer"
-            style="
-              display:inline-flex;
-              align-items:center;
-              gap:6px;
-              padding:8px 14px;
-              border-radius:999px;
-              background:#fff0e8;
-              border:1px solid #f7a27a;
-              font-size:13px;
-              color:#b8481e;
-              text-decoration:none;
-              font-weight:600;
-            "
-          >
-            <span style="
-              width:20px;height:20px;border-radius:999px;
-              background:#ff5b1f;color:#fff;
-              display:flex;align-items:center;justify-content:center;
-              font-size:13px;
-            ">🛒</span>
-            <span>前往蝦皮賣場看看</span>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- =========================================================
-      訂單查詢
-    ========================================================= -->
     <section class="card" id="order-query" aria-label="訂單查詢">
       <h3 class="section-title">
         訂單查詢
         <span>輸入電話與訂單編號，自行查看訂單狀態</span>
       </h3>
-
 
       <form id="orderQueryForm">
         <div class="form-row">
@@ -1326,16 +894,12 @@ footer{
 
         <div class="form-actions">
           <button type="submit" class="btn-primary">查詢訂單</button>
-          <div class="form-hint"></div>
         </div>
       </form>
 
       <div class="order-result" id="orderResult"></div>
     </section>
 
-    <!-- =========================================================
-      品牌故事
-    ========================================================= -->
     <section class="card" id="about" aria-label="品牌故事">
       <h3 class="section-title">
         品牌小故事
@@ -1354,11 +918,6 @@ footer{
         那些微小、卻真實的美好，就是三小隻存在的原因。
       </p>
 
-      <p>
-        所以我們把動畫周邊、生活小物與療癒選物集合在一起，精挑細選，<br />
-        只希望每一樣送到你手上的，不只是物品，而是一份剛剛好的陪伴。
-      </p>
-
       <ul>
         <li>親自挑選、實拍實用，不只看廠商照片。</li>
         <li>價格設定在「自己也會願意買」的範圍內。</li>
@@ -1374,18 +933,9 @@ footer{
   <footer>
     三小隻日常百貨｜療癒生活百貨 · 無會員制電商網站示意版型<br />
     聯絡信箱:b123027869@gmail.com<br />
-	連絡電話:0985675489
-	地址:高雄市彌陀區海尾里海尾路62號之1
+    連絡電話:0985675489<br />
+    地址:高雄市彌陀區海尾里海尾路62號之1
   </footer>
-
-  <!-- 右下角裝飾 -->
-  <div class="sxz-cloud-buddies" aria-hidden="true">
-    <div class="sxz-cloud"></div>
-    <div class="sxz-buddy sxz-buddy-1"></div>
-    <div class="sxz-buddy sxz-buddy-2"></div>
-    <div class="sxz-buddy sxz-buddy-3"></div>
-    <div class="sxz-stick"></div>
-  </div>
 
   <!-- Lightbox -->
   <div id="imgLightbox" class="lb" aria-hidden="true">
@@ -1398,8 +948,7 @@ footer{
     <div class="lb-hint" id="lbHint">點擊空白處或按 ESC 關閉｜左右鍵切換｜手機可左右滑</div>
   </div>
 
-  <!-- ✅ Frontend JS（固定讀取 public/app.js） -->
-  <script src="/app.js?v=20251216-1"></script>
-  
+  <!-- ✅ Frontend JS -->
+  <script src="/app.js?v=final-20251216-heroFix"></script>
 </body>
 </html>
