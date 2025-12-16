@@ -46,20 +46,9 @@ const ALLOW_ORIGINS = new Set([
 
 app.use(cors({
   origin: (origin, cb) => {
-    // 沒有 Origin（例如：同站、Server-to-Server）直接放行
-    if (!origin) return cb(null, true);
-
-    // 你的白名單
-    if (ALLOW_ORIGINS.has(origin)) return cb(null, true);
-
-    // ✅ 綠界（正式/測試）放行：避免付款完成後回來被你擋掉
-    try {
-      const u = new URL(origin);
-      if (u.hostname.endsWith("ecpay.com.tw")) return cb(null, true);
-    } catch (e) {}
-
-    // 不要丟 error（丟 error 會變 500）
-    return cb(null, false);
+    if (!origin) return cb(null, true);                 // server-to-server / curl 會是空
+    if (ALLOW_ORIGINS.has(origin)) return cb(null, true); // 你允許的前端
+    return cb(null, false);                             // ✅ 不丟錯，只是不加 CORS header
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -185,16 +174,16 @@ const RESEND_FROM = process.env.RESEND_FROM || '';
 const ORDER_NOTIFY_EMAIL = process.env.ORDER_NOTIFY_EMAIL || '';
 
 async function sendEmailViaResend({ to, subject, html }) {
+  if (!RESEND_API_KEY || !RESEND_FROM) {
+    return { ok: false, skipped: true, reason: 'missing_config' };
+  }
+
   const email = String(to || '').trim();
 
   // ✅ 基本 email 格式檢查（不合法就直接略過，不丟錯）
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    console.warn('⚠️ skip email: invalid address =', email);
+    console.warn('⚠️ skip email: invalid address =', JSON.stringify(email));
     return { ok: false, skipped: true, reason: 'invalid_email' };
-  }
-
-  if (!RESEND_API_KEY || !RESEND_FROM) {
-    return { ok: false, skipped: true, reason: 'missing_config' };
   }
 
   try {
@@ -204,27 +193,21 @@ async function sendEmailViaResend({ to, subject, html }) {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        from: RESEND_FROM,
-        to: email,
-        subject,
-        html
-      })
+      body: JSON.stringify({ from: RESEND_FROM, to: email, subject, html })
     });
 
     const text = await resp.text();
-
     if (!resp.ok) {
       console.error('❌ Resend send failed', resp.status, text);
       return { ok: false, status: resp.status };
     }
-
     return { ok: true };
   } catch (e) {
     console.error('❌ Resend error', e);
     return { ok: false, error: String(e) };
   }
 }
+
 
 
 function escapeHtml(s) {
