@@ -607,11 +607,14 @@ function getCartQty(productId, specKey) {
     return cartItems.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
   }
 
-  function updateCartButtonCount() {
-    const btn = document.querySelector('button.btn-primary[onclick*="scrollToSection(\'cart\')"]');
-    if (!btn) return;
-    btn.textContent = `查看購物車（${getCartCount()}）`;
-  }
+function updateCartButtonCount() {
+  const badge = document.getElementById("cartCountBadge");
+  if (!badge) return;
+
+  const count = getCartCount();
+  badge.textContent = String(count);
+  badge.style.display = count > 0 ? "flex" : "none";
+}
 
   function renderCartListUI() {
     const cartListEl = $("cartList");
