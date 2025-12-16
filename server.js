@@ -1,5 +1,8 @@
 // server.js
 require('dotenv').config();
+const ECPAY_MERCHANT_ID = process.env.ECPAY_MERCHANT_ID || '';
+const ECPAY_HASH_KEY    = process.env.ECPAY_HASH_KEY || '';
+const ECPAY_HASH_IV     = process.env.ECPAY_HASH_IV || '';
 console.log('🔥 SANXIAOZI ADMIN SERVER STARTED');
 
 const express = require('express');
@@ -9,6 +12,7 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
+app.set('trust proxy', 1);
 
 /* =========================================================
  * Security: CSP (fix admin + supabase + API fetch)
@@ -21,7 +25,7 @@ app.use((req, res, next) => {
       "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
-      "connect-src 'self' http://localhost:3000 https://*.supabase.co",
+      "connect-src 'self' http://localhost:3000 https://sanxiaozi-shop.onrender.com https://*.supabase.co",
       "font-src 'self' data:",
     ].join("; ")
   );
@@ -52,6 +56,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // ✅ 綠界回呼最常用 urlencoded
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* =========================================================
@@ -199,6 +204,58 @@ function escapeHtml(s) {
     .replace(/'/g,'&#39;');
 }
 
+const ECPAY_ENV = (process.env.ECPAY_ENV || 'prod').toLowerCase();
+
+function ecpayGatewayUrl() {
+  return (ECPAY_ENV === 'stage')
+    ? 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5'
+    : 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
+}
+
+function ecpayUrlEncode(str) {
+  const encoded = encodeURIComponent(str).toLowerCase().replace(/%20/g, '+');
+  return encoded
+    .replace(/%2d/g, '-')
+    .replace(/%5f/g, '_')
+    .replace(/%2e/g, '.')
+    .replace(/%21/g, '!')
+    .replace(/%2a/g, '*')
+    .replace(/%28/g, '(')
+    .replace(/%29/g, ')');
+}
+
+function genCheckMacValue(params) {
+  const raw = { ...params };
+  delete raw.CheckMacValue;
+
+  const keys = Object.keys(raw).sort((a,b) => a.localeCompare(b));
+  const qs = keys.map(k => `${k}=${raw[k]}`).join('&');
+
+  const toEncode = `HashKey=${ECPAY_HASH_KEY}&${qs}&HashIV=${ECPAY_HASH_IV}`;
+  const encoded = ecpayUrlEncode(toEncode);
+  return crypto.createHash('sha256').update(encoded).digest('hex').toUpperCase();
+}
+
+function buildAutoSubmitForm(action, fields) {
+  const inputs = Object.entries(fields).map(([k,v]) =>
+    `<input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(String(v ?? ''))}">`
+  ).join('\n');
+
+  return `<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body>
+  <p style="font-family:system-ui;padding:16px;">正在前往綠界付款頁面…</p>
+  <form id="__ecpay" method="POST" action="${escapeHtml(action)}">
+    ${inputs}
+  </form>
+  <script>document.getElementById('__ecpay').submit();</script>
+</body></html>`;
+}
+
+
+
+
 function orderItemsToHtml(items) {
   const rows = (items || []).map(it => {
     const name = escapeHtml(it.name || '');
@@ -278,6 +335,97 @@ function buildAdminMail({ orderId, customer, items, totalAmount, shippingFee, fu
     </div>
   `;
 }
+
+
+async function sendPaidEmailsByPaymentRef(paymentRef) {
+  if (!paymentRef) return;
+
+  // 撈出同一個 paymentRef 的所有訂單（支援拆單）
+  const { data: orders, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('paymentRef', paymentRef)
+    .order('createdAt', { ascending: true });
+
+  if (error) throw error;
+  if (!orders || orders.length === 0) return;
+
+  // 已寄過就不要再寄（避免回呼重送）
+  const alreadySent = orders.some(o => o.emailSent === true);
+  if (alreadySent) return;
+
+  // 合併資料（給客人一封就好）
+  const mergedIds = orders.map(o => o.id).join(' / ');
+  const mergedItems = orders.flatMap(o => safeJson(o.items, []) || []);
+  const customer = safeJson(orders[0].customer, {}) || {};
+  const mergedTotal = orders.reduce((s, o) => s + (Number(o.totalAmount || 0) || 0), 0);
+
+  // 運費：通常只有現貨那單有收，取第一筆 shippingFee > 0 的，沒有就取第一筆
+  const shipFee = (() => {
+    const hit = orders.find(o => (Number(o.shippingFee || 0) || 0) > 0);
+    return Number((hit || orders[0]).shippingFee || 0) || 0;
+  })();
+
+  // 1) 寄給站長（每筆訂單各寄一封，方便你對帳）
+  try {
+    if (ORDER_NOTIFY_EMAIL) {
+      for (const o of orders) {
+        const oCustomer = safeJson(o.customer, {}) || {};
+        const oItems = safeJson(o.items, []) || [];
+        await sendEmailViaResend({
+          to: ORDER_NOTIFY_EMAIL,
+          subject: `✅ 付款成功通知：${o.id}`,
+          html: buildAdminMail({
+            orderId: o.id,
+            customer: oCustomer,
+            items: oItems,
+            totalAmount: Number(o.totalAmount || 0) || 0,
+            shippingFee: Number(o.shippingFee || 0) || 0,
+            fulfillType: o.fulfillType || ''
+          })
+        });
+      }
+    }
+  } catch (e) {
+    console.error('❌ admin paid mail error', e);
+  }
+
+  // 2) 寄給客人（合併一封）
+  try {
+    const toCustomer = String(customer?.email || '').trim();
+    if (toCustomer) {
+      await sendEmailViaResend({
+        to: toCustomer,
+        subject: `✅【三小隻日常百貨】付款成功：${mergedIds}`,
+        html: buildCustomerMail({
+          orderId: mergedIds,
+          customer,
+          items: mergedItems,
+          totalAmount: mergedTotal,
+          shippingFee: shipFee
+        })
+      });
+    }
+  } catch (e) {
+    console.error('❌ customer paid mail error', e);
+  }
+
+  // 寫入已寄信旗標（全部同一個 paymentRef 都標記）
+  try {
+    const { error: uerr } = await supabase
+      .from('orders')
+      .update({ emailSent: true, emailSentAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .eq('paymentRef', paymentRef);
+
+    if (uerr) throw uerr;
+  } catch (e) {
+    console.error('❌ set emailSent failed', e);
+  }
+}
+
+
+
+
 
 /* =========================================================
  * Helpers
@@ -630,9 +778,10 @@ app.post('/api/orders', async (req, res) => {
     // ✅ 同步 shipType 到 customer.ship
     const fixedCustomer = { ...customer, ship: shipType };
 
-    const payMethod = String(customer.pay || "shopee").toLowerCase();
-    let payStatus = "unpaid";
-    if (["linepay", "ecpay", "card"].includes(payMethod)) payStatus = "pending";
+const payMethod = String(customer.pay || "cod").toLowerCase();
+const needEcpay = (payMethod === "card" || payMethod === "atm");
+let payStatus = "unpaid";
+if (["card", "atm", "linepay"].includes(payMethod)) payStatus = "pending";
 
     // ✅ 先扣庫存（若不足會 throw）
     const tagMap = await deductStockForItems(items);
@@ -663,7 +812,6 @@ app.post('/api/orders', async (req, res) => {
 
       paymentMethod: payMethod,
       paymentStatus: payStatus,
-      paymentRef: "",
       paidAt: null,
 
       items: normalizedItems,
@@ -676,10 +824,12 @@ app.post('/api/orders', async (req, res) => {
 
     // 產生第一張（現貨/或全備貨）
     const id1 = await generateOrderIdFromDB();
+	const paymentRef = id1; // 用第一張單號當付款 ref
 
     stockOrder = {
       ...orderBase,
       id: id1,
+	  paymentRef: paymentRef,
       fulfillType: (leadtimeItems.length > 0 && stockItems.length === 0) ? 'leadtime' : 'stock',
       items: (leadtimeItems.length > 0 && stockItems.length === 0) ? leadtimeItems : stockItems,
       subtotal: (leadtimeItems.length > 0 && stockItems.length === 0) ? leadSubtotal : stockSubtotal,
@@ -696,6 +846,7 @@ app.post('/api/orders', async (req, res) => {
       leadOrder = {
         ...orderBase,
         id: id2,
+		paymentRef: paymentRef,
         fulfillType: 'leadtime',
         items: leadtimeItems,
         subtotal: leadSubtotal,
@@ -706,91 +857,47 @@ app.post('/api/orders', async (req, res) => {
       createdIds.push(leadOrder.id);
     }
 
-    // ✅ 寄信（失敗不影響下單成功）
-    (async () => {
-      try {
-        if (ORDER_NOTIFY_EMAIL) {
-          await sendEmailViaResend({
-            to: ORDER_NOTIFY_EMAIL,
-            subject: `🔔 新訂單通知：${stockOrder.id}`,
-            html: buildAdminMail({
-              orderId: stockOrder.id,
-              customer,
-              items: stockOrder.items,
-              totalAmount: stockOrder.totalAmount,
-              shippingFee: stockOrder.shippingFee,
-              fulfillType: stockOrder.fulfillType || ''
-            })
-          });
 
-          if (leadOrder) {
-            await sendEmailViaResend({
-              to: ORDER_NOTIFY_EMAIL,
-              subject: `🔔 新訂單通知（備貨單）：${leadOrder.id}`,
-              html: buildAdminMail({
-                orderId: leadOrder.id,
-                customer,
-                items: leadOrder.items,
-                totalAmount: leadOrder.totalAmount,
-                shippingFee: leadOrder.shippingFee,
-                fulfillType: leadOrder.fulfillType || 'leadtime'
-              })
-            });
-          }
-        }
-      } catch (e) {
-        console.error('❌ admin mail error', e);
-      }
 
-      try {
-        const toCustomer = String(customer?.email || '').trim();
-        if (toCustomer) {
-          const combinedItems = [
-            ...(stockOrder?.items || []),
-            ...(leadOrder?.items || [])
-          ];
-          const combinedId = leadOrder ? `${stockOrder.id} / ${leadOrder.id}` : stockOrder.id;
-          const combinedTotal =
-            (Number(stockOrder.totalAmount || 0) || 0) +
-            (leadOrder ? (Number(leadOrder.totalAmount || 0) || 0) : 0);
 
-          await sendEmailViaResend({
-            to: toCustomer,
-            subject: `📦【三小隻日常百貨】訂單成立通知：${combinedId}`,
-            html: buildCustomerMail({
-              orderId: combinedId,
-              customer,
-              items: combinedItems,
-              totalAmount: combinedTotal,
-              shippingFee: stockOrder.shippingFee
-            })
-          });
-        }
-      } catch (e) {
-        console.error('❌ customer mail error', e);
-      }
-    })();
 
-    res.json({
-      ok: true,
-      id: stockOrder.id,
-      splitIds: createdIds,
-      createdAt: stockOrder.createdAt,
-      status: stockOrder.status,
-      subtotal: stockOrder.subtotal,
-      shippingFee: stockOrder.shippingFee,
-      totalAmount: (Number(stockOrder.totalAmount || 0) || 0) + (leadOrder ? (Number(leadOrder.totalAmount || 0) || 0) : 0),
-      shipType: stockOrder.shipType
-    });
+res.json({
+  ok: true,
+  id: stockOrder.id,
+  splitIds: createdIds,
+  createdAt: stockOrder.createdAt,
+  status: stockOrder.status,
+  subtotal: stockOrder.subtotal,
+  shippingFee: stockOrder.shippingFee,
+  totalAmount: (Number(stockOrder.totalAmount || 0) || 0) + (leadOrder ? (Number(leadOrder.totalAmount || 0) || 0) : 0),
+  shipType: stockOrder.shipType,
+
+  // ✅ 新增這段（重點：前一行要有逗號）
+payment: needEcpay
+  ? { redirectUrl: `/pay/ecpay?ref=${encodeURIComponent(paymentRef)}&pm=${encodeURIComponent(payMethod)}` }
+  : null
+
+});
 
   } catch (err) {
     console.error('❌ 建立訂單失敗', err);
-    if (err?.insufficient) {
-      return res.status(400).json({ ok: false, message: '部分商品庫存不足', insufficient: err.insufficient });
+
+    // 你在 deductStockForItems() 裡有丟 err.insufficient
+    if (err && err.insufficient) {
+      return res.status(400).json({
+        ok: false,
+        message: '部分商品庫存不足',
+        insufficient: err.insufficient
+      });
     }
-    res.status(500).json({ ok: false, message: err?.message || '建立訂單失敗，請稍後再試' });
+
+    return res.status(500).json({
+      ok: false,
+      message: err?.message || '建立訂單失敗，請稍後再試'
+    });
   }
 });
+
 
 /* =========================================================
  * Front: query order (phone + id)
@@ -857,12 +964,17 @@ app.post("/api/payments/mark-paid", authAdmin, requireAjaxHeader, async (req, re
   try {
     const order = await dbMarkOrderPaid(orderId, paymentRef);
     if (!order) return res.status(404).json({ ok: false, message: "找不到訂單" });
-    res.json({ ok: true, order });
+
+    const ref = String(order?.paymentRef || paymentRef || "").trim();
+    if (ref) await sendPaidEmailsByPaymentRef(ref);
+
+    return res.json({ ok: true, order });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ ok: false, message: '更新付款狀態失敗' });
+    return res.status(500).json({ ok: false, message: "更新付款狀態失敗" });
   }
 });
+
 
 /* =========================================================
  * OPTIONAL: Payment webhook (server-to-server only, uses PAY_MARK_SECRET)
@@ -874,12 +986,17 @@ app.post("/api/payments/webhook/mark-paid", requirePaySecret, async (req, res) =
   try {
     const order = await dbMarkOrderPaid(orderId, paymentRef);
     if (!order) return res.status(404).json({ ok: false, message: "找不到訂單" });
-    res.json({ ok: true });
+
+    const ref = String(order?.paymentRef || paymentRef || "").trim();
+    if (ref) await sendPaidEmailsByPaymentRef(ref);
+
+    return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ ok: false, message: '更新付款狀態失敗' });
+    return res.status(500).json({ ok: false, message: "更新付款狀態失敗" });
   }
 });
+
 
 /* =========================================================
  * Admin: products (Supabase)
@@ -1026,6 +1143,143 @@ app.patch('/api/admin/orders/:id', authAdmin, requireAjaxHeader, async (req, res
     res.status(500).json({ ok: false, message: '更新訂單狀態失敗' });
   }
 });
+
+/* =========================================================
+ * ECPay: redirect + callback
+ * ========================================================= */
+
+// 1) 客人下單後要導去綠界：GET /pay/ecpay?ref=xxxx
+app.get('/pay/ecpay', async (req, res) => {
+  try {
+    const ref = String(req.query.ref || '').trim();
+	const pm = String(req.query.pm || '').toLowerCase();
+const choosePayment = (pm === 'atm') ? 'ATM' : (pm === 'card') ? 'Credit' : 'ALL';
+
+    if (!ref) return res.status(400).send('missing ref');
+
+    if (!ECPAY_MERCHANT_ID || !ECPAY_HASH_KEY || !ECPAY_HASH_IV) {
+      return res.status(500).send('ECPay env not set');
+    }
+
+    // 同一個 paymentRef 可能對應拆單兩筆
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('id,totalAmount,paymentStatus')
+      .eq('paymentRef', ref);
+
+    if (error) throw error;
+    if (!orders || orders.length === 0) return res.status(404).send('order not found');
+
+    const alreadyPaid = orders.some(o => String(o.paymentStatus || '') === 'paid');
+    if (alreadyPaid) return res.send('已付款完成，請回到商店查看訂單。');
+
+    const totalAmount = orders.reduce((s, o) => s + (Number(o.totalAmount || 0) || 0), 0);
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const HH = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    const tradeDate = `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}`;
+
+    const host = `${req.protocol}://${req.get('host')}`;
+
+    const baseParams = {
+      MerchantID: ECPAY_MERCHANT_ID,
+      MerchantTradeNo: ref,                 // <=20字，ref 用訂單號 OK
+      MerchantTradeDate: tradeDate,
+      PaymentType: 'aio',
+      TotalAmount: totalAmount,
+      TradeDesc: '三小隻日常百貨訂單付款',
+      ItemName: '三小隻日常百貨商品一批',
+      ChoosePayment: choosePayment,               // 讓客人選信用卡/ATM
+      EncryptType: 1,
+
+      ReturnURL: `${host}/api/ecpay/return`,             // 綠界 server 回呼
+	  
+      OrderResultURL: `${host}/pay/ecpay/result?ref=${encodeURIComponent(ref)}`,
+      ClientBackURL: `${host}/#checkoutSection`,
+    };
+
+    const CheckMacValue = genCheckMacValue(baseParams);
+    const formHtml = buildAutoSubmitForm(ecpayGatewayUrl(), { ...baseParams, CheckMacValue });
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(formHtml);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('create ecpay form failed');
+  }
+});
+
+// 2) 綠界付款完成會 POST 到這裡（server-to-server）
+app.post('/api/ecpay/return', async (req, res) => {
+  try {
+    const body = req.body || {};
+	console.log("ECPAY RETURN BODY:", req.body);
+    const recv = String(body.CheckMacValue || '');
+    const calc = genCheckMacValue(body);
+
+    if (!recv || recv !== calc) {
+      console.error('❌ ECPay CheckMacValue mismatch');
+      return res.status(400).send('0|FAIL');
+    }
+
+    const rtnCode = String(body.RtnCode || '');
+    const ref = String(body.MerchantTradeNo || '').trim(); // 我們用 ref 當 paymentRef
+    const tradeNo = String(body.TradeNo || '').trim();
+
+if (rtnCode === '1' && ref) {
+  const patch = {
+    paymentStatus: "paid",
+    paidAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ecpayTradeNo: tradeNo || ""
+  };
+
+  const { error } = await supabase
+    .from('orders')
+    .update(patch)
+    .eq('paymentRef', ref);
+
+  if (error) throw error;
+
+  // ✅ 付款成功才寄信
+  await sendPaidEmailsByPaymentRef(ref);
+}
+
+    // 綠界要求回 1|OK
+    return res.send('1|OK');
+  } catch (e) {
+    console.error('❌ ECPay return error', e);
+    return res.status(500).send('0|ERR');
+  }
+});
+
+// 3) 客人付款後回來看到的頁面（簡單顯示）
+app.get('/pay/ecpay/result', async (req, res) => {
+  const ref = String(req.query.ref || '').trim();
+  if (!ref) return res.status(400).send('missing ref');
+
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('paymentStatus')
+    .eq('paymentRef', ref);
+
+  const paid = (orders || []).some(o => String(o.paymentStatus) === 'paid');
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html><html><body style="font-family:system-ui;padding:16px;">
+    <h2>${paid ? '✅ 付款成功' : '⏳ 付款處理中 / 尚未完成'}</h2>
+    <p>付款編號：${escapeHtml(ref)}</p>
+    <p><a href="/">回首頁</a></p>
+  </body></html>`);
+});
+
+
+
 
 /* =========================================================
  * Start

@@ -1348,17 +1348,35 @@ if (address.length < 4) {
           };
         }).filter(x => x.productId && x.qty > 0);
 
-        const payload = {
-          customer: { name, phone, email, address, line, ship, pay, note },
-          items
-        };
+// ✅ 付款方式：用表單選到的 pay（你上面已經 const pay = ... 了）
+// 如果你想「強制都走綠界」，用 payMethod 這個名字，別用 pay 來遮蔽
+const payMethod = String(pay || "").toLowerCase(); // pay 來自外層：checkoutPay
 
-        const resp = await apiPost("/api/orders", payload);
+const payload = {
+  customer: { name, phone, email, address, line, ship, pay: payMethod, note },
+  items
+};
 
-        if (!resp || resp.ok !== true) {
-          alert(resp?.message || "建立訂單失敗，請稍後再試");
-          return;
-        }
+// ✅ 真的建立訂單（你原本缺這行，resp 才會存在）
+const resp = await apiPost("/api/orders", payload);
+
+if (!resp || resp.ok !== true) {
+  alert(resp?.message || "建立訂單失敗，請稍後再試");
+  return;
+}
+
+/* ✅【貼這裡】有綠界付款就直接跳轉 */
+if (resp?.payment?.redirectUrl) {
+  location.href = resp.payment.redirectUrl;
+  return;
+}
+
+		
+		/* ✅【貼這裡】有綠界付款就直接跳轉 */
+if (resp?.payment?.redirectUrl) {
+  location.href = resp.payment.redirectUrl;
+  return;
+}
 
         const ids = Array.isArray(resp.splitIds)
           ? resp.splitIds
