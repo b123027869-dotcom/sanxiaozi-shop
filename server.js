@@ -1260,23 +1260,37 @@ if (rtnCode === '1' && ref) {
 
 // 3) 客人付款後回來看到的頁面（簡單顯示）
 app.get('/pay/ecpay/result', async (req, res) => {
-  const ref = String(req.query.ref || '').trim();
-  if (!ref) return res.status(400).send('missing ref');
+  try {
+    const ref = String(req.query.ref || '').trim();
+    if (!ref) return res.status(400).send('missing ref');
 
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('paymentStatus')
-    .eq('paymentRef', ref);
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('paymentStatus')
+      .eq('paymentRef', ref);
 
-  const paid = (orders || []).some(o => String(o.paymentStatus) === 'paid');
+    if (error) throw error;
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(`<!doctype html><html><body style="font-family:system-ui;padding:16px;">
-    <h2>${paid ? '✅ 付款成功' : '⏳ 付款處理中 / 尚未完成'}</h2>
-    <p>付款編號：${escapeHtml(ref)}</p>
-    <p><a href="/">回首頁</a></p>
-  </body></html>`);
+    const paid = (orders || []).some(o => String(o.paymentStatus) === 'paid');
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(`<!doctype html><html><body style="font-family:system-ui;padding:16px;">
+      <h2>${paid ? '✅ 付款成功' : '⏳ 付款處理中 / 尚未完成'}</h2>
+      <p>付款編號：${escapeHtml(ref)}</p>
+      <p><a href="/">回首頁</a></p>
+    </body></html>`);
+  } catch (e) {
+    console.error('❌ /pay/ecpay/result error:', e);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    // 這裡不要再回 500，避免客人看到 Internal Server Error
+    return res.status(200).send(`<!doctype html><html><body style="font-family:system-ui;padding:16px;">
+      <h2>✅ 已收到付款結果</h2>
+      <p>系統正在同步訂單狀態，請回到商店查看。</p>
+      <p><a href="/">回首頁</a></p>
+    </body></html>`);
+  }
 });
+
 
 
 
