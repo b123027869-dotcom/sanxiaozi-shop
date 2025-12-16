@@ -1322,10 +1322,11 @@ if (rtnCode === '1' && ref) {
     ecpayTradeNo: tradeNo || ""
   };
 
-  const { error } = await supabase
-    .from('orders')
-    .update(patch)
-    .eq('paymentRef', ref);
+const { error } = await supabase
+  .from('orders')
+  .update(patch)
+  .or(`paymentRef.eq.${ref},id.eq.${ref},merchantTradeNo.eq.${ref}`);
+
 
   if (error) throw error;
 
