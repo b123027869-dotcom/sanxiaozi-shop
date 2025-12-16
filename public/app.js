@@ -1050,6 +1050,173 @@ function bindAddToCart() {
   /* =========================================================
    * Checkout
    * ========================================================= */
+   
+     /* =========================================================
+   * ✅ Remember customer info (localStorage)
+   * - 目的：下次開頁自動帶入
+   * - 也提供「套用上次資料 / 清除記憶」按鈕
+   * ========================================================= */
+  const CUSTOMER_DRAFT_KEY = "sxz_checkout_draft_v1";
+
+  function readDraft() {
+    try {
+      const raw = localStorage.getItem(CUSTOMER_DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeDraft(draft) {
+    try {
+      localStorage.setItem(CUSTOMER_DRAFT_KEY, JSON.stringify(draft || {}));
+    } catch {}
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(CUSTOMER_DRAFT_KEY); } catch {}
+  }
+
+  function getCurrentDraftFromForm() {
+    return {
+      name: $("checkoutName")?.value?.trim() || "",
+      phone: $("checkoutPhone")?.value?.trim() || "",
+      emailLocal: $("checkoutEmailLocal")?.value?.trim() || "",
+      emailDomain: $("checkoutEmailDomain")?.value || "gmail.com",
+      emailCustom: $("checkoutEmailCustom")?.value?.trim() || "",
+      address: $("checkoutAddress")?.value?.trim() || "",
+      line: $("checkoutLine")?.value?.trim() || "",
+      ship: $("checkoutShip")?.value || "711",
+      pay: $("checkoutPay")?.value || "card",
+    };
+  }
+
+  function applyDraftToForm(d) {
+    if (!d) return;
+
+    if ($("checkoutName") && d.name) $("checkoutName").value = d.name;
+    if ($("checkoutPhone") && d.phone) $("checkoutPhone").value = d.phone;
+
+    if ($("checkoutEmailLocal") && d.emailLocal) $("checkoutEmailLocal").value = d.emailLocal;
+    if ($("checkoutEmailDomain") && d.emailDomain) $("checkoutEmailDomain").value = d.emailDomain;
+    if ($("checkoutEmailCustom") && d.emailCustom) $("checkoutEmailCustom").value = d.emailCustom;
+
+    // ✅ 你的 custom 網域欄位顯示/隱藏要同步一次
+    const domainSel = $("checkoutEmailDomain");
+    const custom = $("checkoutEmailCustom");
+    if (domainSel && custom) {
+      custom.style.display = (domainSel.value === "custom") ? "block" : "none";
+    }
+
+    if ($("checkoutAddress") && d.address) $("checkoutAddress").value = d.address;
+    if ($("checkoutLine") && d.line) $("checkoutLine").value = d.line;
+
+    if ($("checkoutShip") && d.ship) $("checkoutShip").value = d.ship;
+    if ($("checkoutPay") && d.pay) $("checkoutPay").value = d.pay;
+  }
+
+  function bindDraftAutoSave() {
+    const ids = [
+      "checkoutName",
+      "checkoutPhone",
+      "checkoutEmailLocal",
+      "checkoutEmailDomain",
+      "checkoutEmailCustom",
+      "checkoutAddress",
+      "checkoutLine",
+      "checkoutShip",
+      "checkoutPay",
+    ];
+
+    let t = null;
+    const saveSoon = () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        writeDraft(getCurrentDraftFromForm());
+      }, 200);
+    };
+
+    ids.forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("input", saveSoon);
+      el.addEventListener("change", saveSoon);
+      el.addEventListener("blur", saveSoon);
+      // ✅ 「點格子就看到」：focus 時若目前是空的，就提示/套用
+      el.addEventListener("focus", () => {
+        const d = readDraft();
+        if (!d) return;
+
+        // 只有在欄位全空或主要欄位空時才自動帶（避免打到一半被蓋掉）
+        const nameEl = $("checkoutName");
+        const phoneEl = $("checkoutPhone");
+        if (nameEl && phoneEl && (!nameEl.value.trim() && !phoneEl.value.trim())) {
+          applyDraftToForm(d);
+        }
+      });
+    });
+  }
+
+  function injectDraftButtons() {
+    const form = $("checkoutForm");
+    if (!form) return;
+
+    // 避免重複插入
+    if (document.getElementById("sxzDraftBtnBar")) return;
+
+    const bar = document.createElement("div");
+    bar.id = "sxzDraftBtnBar";
+    bar.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 0;align-items:center;";
+
+    const btnUse = document.createElement("button");
+    btnUse.type = "button";
+    btnUse.className = "btn-secondary";
+    btnUse.textContent = "✨ 套用上次填寫";
+    btnUse.addEventListener("click", () => {
+      const d = readDraft();
+      if (!d) { alert("目前沒有已記憶的資料喔 🤍"); return; }
+      applyDraftToForm(d);
+      alert("已套用上次填寫 ✅");
+    });
+
+    const btnClear = document.createElement("button");
+    btnClear.type = "button";
+    btnClear.className = "btn-secondary";
+    btnClear.textContent = "🧹 清除記憶";
+    btnClear.addEventListener("click", () => {
+      clearDraft();
+      alert("已清除記憶 ✅");
+    });
+
+    bar.appendChild(btnUse);
+    bar.appendChild(btnClear);
+
+    // 插在表單最上方
+    form.prepend(bar);
+  }
+
+  function initCustomerMemory() {
+    // 1) 載入並套用（只在主要欄位還沒填時才自動套）
+    const d = readDraft();
+    const nameEl = $("checkoutName");
+    const phoneEl = $("checkoutPhone");
+    if (d && nameEl && phoneEl && (!nameEl.value.trim() && !phoneEl.value.trim())) {
+      applyDraftToForm(d);
+    }
+
+    // 2) 自動儲存草稿（打字就記）
+    bindDraftAutoSave();
+
+    // 3) 加入「套用/清除」按鈕
+    injectDraftButtons();
+  }
+
+   
+   
+   
+   
+   
+   
   function getShopeeUrlForCOD() {
     return "https://shopee.tw/a0931866109?categoryId=100639&entryPoint=ShopByPDP&itemId=47802373263";
   }
@@ -1063,6 +1230,24 @@ function bindAddToCart() {
     return `${local}@${domain}`;
   }
 
+  // ✅ Checkout 格式防呆（前台檢查）
+  function normalizeDigits(s) {
+    return String(s || "").replace(/[^\d]/g, "");
+  }
+
+  function isValidTWMobile(phone) {
+    const d = normalizeDigits(phone);
+    // 台灣手機常見：09xxxxxxxx（10碼）
+    return /^09\d{8}$/.test(d);
+  }
+
+  function isValidEmail(email) {
+    const e = String(email || "").trim();
+    // 不用太嚴格，但要擋掉明顯亂填
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+  }
+
+
   let __checkoutBound = false;
   function bindCheckoutFormSubmit() {
     if (__checkoutBound) return;
@@ -1070,6 +1255,7 @@ function bindAddToCart() {
 
     const form = $("checkoutForm");
     if (!form) return;
+	let lastSubmitAt = 0; // ✅ 防止短時間連續送出
 
     // email domain custom toggle
     const domainSel = $("checkoutEmailDomain");
@@ -1084,6 +1270,15 @@ function bindAddToCart() {
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+	  
+	  // ✅ 8 秒內禁止重複送出（防狂點/防亂下單）
+const now = Date.now();
+if (now - lastSubmitAt < 8000) {
+  alert("請稍等一下再送出訂單 ⏳");
+  return;
+}
+lastSubmitAt = now;
+
 
       if (!cartItems.length) {
         alert("購物車是空的～先把喜歡的商品加入購物車再送出訂單唷 🤍");
@@ -1103,10 +1298,27 @@ function bindAddToCart() {
       const emailHidden = $("checkoutEmail");
       if (emailHidden) emailHidden.value = email;
 
-      if (!name || !phone || !email || !address) {
-        alert("請把必填欄位填完整：姓名、手機、Email、地址/門市 🤍");
-        return;
-      }
+     // 基本防呆
+if (!name || name.length < 2) {
+  alert("請填寫正確的收件人姓名（至少 2 個字）🤍");
+  return;
+}
+
+if (!/^09\d{8}$/.test(phone)) {
+  alert("請填寫正確的手機號碼（例：09xxxxxxxx）📱");
+  return;
+}
+
+if (!email.includes("@") || email.length < 6) {
+  alert("請填寫正確的 Email ✉️");
+  return;
+}
+
+if (address.length < 4) {
+  alert("請填寫完整的收件地址或門市資訊 🏠");
+  return;
+}
+
 
       if (String(pay).toLowerCase() === "cod") {
         alert("本網站暫不支援貨到付款～我幫你開蝦皮下單（可貨到付款）🛒");
@@ -1153,7 +1365,7 @@ function bindAddToCart() {
           : (resp.id ? [resp.id] : []);
 
         alert(`🎉 訂單已送出成功！\n訂單編號：${ids.join(" / ")}\n我們會用 Email / LINE 通知出貨進度 🤍`);
-
+		writeDraft(getCurrentDraftFromForm());
         cartItems = [];
         updateCartSummaryUI();
 
@@ -1256,6 +1468,7 @@ function bindAddToCart() {
     bindDetailLineBtn();
 
     bindCheckoutFormSubmit();
+	initCustomerMemory();
     bindOrderQueryForm();
 
     updateCartSummaryUI();
