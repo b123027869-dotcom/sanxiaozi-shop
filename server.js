@@ -485,6 +485,23 @@ function storagePathFromUrl(url) {
   return null;
 }
 
+async function storageRemovePaths(paths) {
+  try {
+    const list = (paths || []).filter(Boolean);
+    if (list.length === 0) return;
+
+    const { error } = await supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .remove(list);
+
+    if (error) console.warn('⚠️ storage remove failed:', error);
+  } catch (e) {
+    console.warn('⚠️ storage remove exception:', e);
+  }
+}
+
+
 function collectProductImagePaths(productRow) {
   const paths = new Set();
 
@@ -1158,6 +1175,9 @@ app.patch('/api/admin/products/:id', authAdmin, requireAjaxHeader, async (req, r
   const {
     code, name, price, stock, category, status, tag, imageUrl, description, variants, detailImages
   } = req.body || {};
+	
+  const removed = Array.isArray(req.body?.removedDetailImages) ? req.body.removedDetailImages : [];
+const removedPaths = removed.map(storagePathFromUrl).filter(Boolean);
 
   const priceVal = Number(price || 0);
   const stockVal = Number(stock || 0);
@@ -1181,6 +1201,8 @@ app.patch('/api/admin/products/:id', authAdmin, requireAjaxHeader, async (req, r
     };
 
     await dbUpdateProduct(productId, payload);
+	await storageRemovePaths(removedPaths);
+
     res.json({ success: true });
   } catch (err) {
     console.error('更新商品失敗', err);

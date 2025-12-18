@@ -764,6 +764,7 @@ let allOrders = [];
 
     // 詳細小圖（Supabase 公開 URL 陣列）
     let currentDetailImages = [];
+	let removedDetailImages = [];
 
     /* =========================================================
      * DOM Cache
@@ -1467,6 +1468,8 @@ ${atmInfoLine}
 
     function fillProductForm(p) {
       editingProductId = p.id;
+	  
+	  removedDetailImages = [];
 
       productCodeInput.value = p.code || '';
       productNameInput.value = p.name || '';
@@ -1497,6 +1500,7 @@ ${atmInfoLine}
 
       currentDetailImages = [];
       renderDetailImages();
+	  removedDetailImages = [];
 
       productFormStatus.textContent = '目前狀態：新增新商品';
       productFormSubmitBtn.textContent = '新增商品';
@@ -1518,7 +1522,8 @@ ${atmInfoLine}
         imageUrl: productImageUrlInput.value.trim(),
         description: productDescriptionInput.value.trim(),
         variants: getVariantsFromForm(),
-        detailImages: currentDetailImages
+        detailImages: currentDetailImages,
+		removedDetailImages: removedDetailImages
       };
 
       if (!payload.name) {
@@ -1717,9 +1722,12 @@ currentDetailImages.forEach((url) => {
         btn.style.right = '-6px';
         btn.style.fontSize = '10px';
         btn.addEventListener('click', () => {
-          currentDetailImages.splice(index, 1);
-          renderDetailImages();
-        });
+  const removedUrl = currentDetailImages[index];
+  if (removedUrl) removedDetailImages.push(removedUrl);
+
+  currentDetailImages.splice(index, 1);
+  renderDetailImages();
+});
 
         wrap.appendChild(img);
         wrap.appendChild(btn);
