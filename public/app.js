@@ -850,109 +850,148 @@ const inCartQty = getCartQty(currentDetailProductId, specKey);
 }
 
 
-  /* =========================================================
-   * Hero from products (FIXED structure)
-   * ========================================================= */
-  function buildHeroFromProducts() {
-    const slidesEl = $("heroBannerSlides");
-    const dotsEl = $("heroBannerDots");
-    if (!slidesEl || !dotsEl) return;
-    if (!products.length) return;
 
-    const HERO_LIMIT = 6;
-    const STORAGE_KEY = "hero_product_order_v2";
+/* =========================================================
+ * Hero from products (FINAL + 防呆：避免只剩 1 張 + 隱藏 leadtime_10_15)
+ * ========================================================= */
+function buildHeroFromProducts() {
+  const slidesEl = $("heroBannerSlides");
+  const dotsEl = $("heroBannerDots");
+  if (!slidesEl || !dotsEl) return;
+  if (!Array.isArray(products) || !products.length) return;
 
-    slidesEl.innerHTML = "";
-    dotsEl.innerHTML = "";
+  const HERO_LIMIT = 6;
 
-    const source = products.filter(p => p.tag && String(p.tag).trim() !== "");
-    const baseList = source.length ? source : products;
+  // ✅ 不要讓 leadtime_10_15 這種 tag 出現在輪播 tag，也不要用它當輪播主打來源
+  const isLeadtimeTag = (t) => {
+    const s = String(t || "").trim();
+    if (!s) return false;
+    return /^leadtime_?10_?15$/i.test(s) || /LEADTIME10_15/i.test(s);
+  };
 
-    let order = [];
-    try { order = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch {}
+  const STORAGE_KEY = "hero_product_order_v2";
 
-    if (!order.length) {
-      order = baseList.map(p => p.id);
-      for (let i = order.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [order[i], order[j]] = [order[j], order[i]];
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+  slidesEl.innerHTML = "";
+  dotsEl.innerHTML = "";
+
+  // ✅ source：只挑「有 tag」且不是 leadtime 的商品作為輪播主打來源
+  const source = products.filter((p) => {
+    const t = String(p?.tag || "").trim();
+    return t && !isLeadtimeTag(t);
+  });
+
+  // ✅ 如果沒有任何主打 tag，就回退到全部商品
+  const baseList = source.length ? source : products;
+
+  // ✅ 讀取 localStorage 的輪播順序
+  let order = [];
+  try {
+    order = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {
+    order = [];
+  }
+
+  // ✅ 防呆：只要 order 太短、或 order 裡有效商品太少，就自動重建
+  const needCount = Math.min(HERO_LIMIT, baseList.length);
+  const validCount = Array.isArray(order)
+    ? order
+        .map((id) => baseList.find((p) => String(p.id) === String(id)))
+        .filter(Boolean).length
+    : 0;
+
+  if (!Array.isArray(order) || order.length < needCount || validCount < needCount) {
+    order = baseList.map((p) => p.id);
+
+    // shuffle
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
     }
 
-let shuffled = order
-  .map(id => baseList.find(p => p.id === id))
-  .filter(Boolean)
-  .slice(0, HERO_LIMIT);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    } catch {}
+  }
 
-// ✅ 修復：如果 localStorage 的 id 都找不到（shuffled 空）就改用 baseList 前幾筆
-if (!shuffled.length) {
-  shuffled = baseList.slice(0, HERO_LIMIT);
-  // 也順便重建一次 order，避免下次還是空
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(shuffled.map(p => p.id)));
-  } catch {}
-}
+  // ✅ 依照 order 生成輪播清單
+  let shuffled = order
+    .map((id) => baseList.find((p) => String(p.id) === String(id)))
+    .filter(Boolean)
+    .slice(0, HERO_LIMIT);
 
-    shuffled.forEach((p, i) => {
-      const imgRaw =
-        p.imageUrl ||
-        p.specs?.[0]?.mainImg ||
-        p.specs?.[0]?.thumbs?.[0] ||
-        "";
-      const img = resolveImgUrl(imgRaw);
+  // ✅ 若仍然拿不到（極端情況），直接用 baseList 前幾筆
+  if (!shuffled.length) {
+    shuffled = baseList.slice(0, HERO_LIMIT);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(shuffled.map((p) => p.id)));
+    } catch {}
+  }
 
-      const ctaText =
-        String(p.tag || "").includes("熱") ? "🔥 馬上搶購" :
-        String(p.tag || "").includes("新") ? "🆕 立即看看" :
-        "查看商品";
+  // ✅ 建 slides + dots
+  shuffled.forEach((p, i) => {
+    const imgRaw =
+      p.imageUrl ||
+      p.specs?.[0]?.mainImg ||
+      p.specs?.[0]?.thumbs?.[0] ||
+      "";
+    const img = resolveImgUrl(imgRaw);
 
-      const slide = document.createElement("div");
-      slide.className = "hero-banner-slide" + (i === 0 ? " active" : "");
-      slide.dataset.id = p.id;
+    const ctaText =
+      String(p.tag || "").includes("熱") ? "🔥 馬上搶購" :
+      String(p.tag || "").includes("新") ? "🆕 立即看看" :
+      "查看商品";
 
-      // ✅ 固定結構：hero-tag + hero-banner-media + hero-content + hero-banner-cta
-      slide.innerHTML = `
-        ${p.tag ? `<span class="hero-tag">${escapeHtml(p.tag)}</span>` : ""}
+    const slide = document.createElement("div");
+    slide.className = "hero-banner-slide" + (i === 0 ? " active" : "");
+    slide.dataset.id = p.id;
 
-        <div class="hero-banner-media">
-          ${img ? `<img src="${img}" alt="${escapeHtml(p.name || "")}">` : ""}
-        </div>
+    slide.innerHTML = `
+      ${(p.tag && !isLeadtimeTag(p.tag)) ? `<span class="hero-tag">${escapeHtml(p.tag)}</span>` : ""}
 
-        <div class="hero-content">
-          <h2>${escapeHtml(p.name || "")}</h2>
-          ${p.subtitle ? `<p>${escapeHtml(p.subtitle)}</p>` : ""}
-          <div class="hero-banner-cta">
-            <button class="cta-primary" type="button">${ctaText}</button>
-          </div>
-        </div>
-      `;
+      <div class="hero-banner-media">
+        ${img ? `<img src="${img}" alt="${escapeHtml(p.name || "")}">` : ""}
+      </div>
 
-      slidesEl.appendChild(slide);
-
-      const dot = document.createElement("span");
-      dot.className = "hero-dot" + (i === 0 ? " active" : "");
-      dotsEl.appendChild(dot);
-    });
-
-    // 最後一張：查看全部商品
-    const moreSlide = document.createElement("div");
-    moreSlide.className = "hero-banner-slide";
-    moreSlide.innerHTML = `
-      <div class="hero-content" style="height:100%;">
-        <h2>看看全部商品</h2>
-        <p>把喜歡的可愛，都放進日常裡 ♡</p>
+      <div class="hero-content">
+        <h2>${escapeHtml(p.name || "")}</h2>
+        ${p.subtitle ? `<p>${escapeHtml(p.subtitle)}</p>` : ""}
         <div class="hero-banner-cta">
-          <button class="cta-secondary" type="button">前往商品列表 →</button>
+          <button class="cta-primary" type="button">${ctaText}</button>
         </div>
       </div>
     `;
-    slidesEl.appendChild(moreSlide);
 
-    const moreDot = document.createElement("span");
-    moreDot.className = "hero-dot";
-    dotsEl.appendChild(moreDot);
-  }
+    slidesEl.appendChild(slide);
+
+    // ✅ dots 用 button（更穩、可點、吃到你 CSS）
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "hero-dot" + (i === 0 ? " active" : "");
+    dot.setAttribute("aria-label", `輪播第 ${i + 1} 張`);
+    dotsEl.appendChild(dot);
+  });
+
+  // ✅ 最後一張：查看全部商品
+  const moreSlide = document.createElement("div");
+  moreSlide.className = "hero-banner-slide";
+  moreSlide.innerHTML = `
+    <div class="hero-content" style="height:100%;">
+      <h2>看看全部商品</h2>
+      <p>把喜歡的可愛，都放進日常裡 ♡</p>
+      <div class="hero-banner-cta">
+        <button class="cta-secondary" type="button">前往商品列表 →</button>
+      </div>
+    </div>
+  `;
+  slidesEl.appendChild(moreSlide);
+
+  const moreDot = document.createElement("button");
+  moreDot.type = "button";
+  moreDot.className = "hero-dot";
+  moreDot.setAttribute("aria-label", "輪播：查看全部商品");
+  dotsEl.appendChild(moreDot);
+}
+
 
   function initHeroBanner() {
     const slidesEl = $("heroBannerSlides");
