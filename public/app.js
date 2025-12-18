@@ -254,6 +254,12 @@ function getCartQty(productId, specKey) {
     if (detailName) detailName.textContent = product.name || "";
     if (detailSub) detailSub.textContent = product.subtitle || "";
     if (detailPrice) detailPrice.textContent = String(Number(product.price) || 0);
+	const tagEl = document.getElementById("detailTagNote");
+if (tagEl) {
+  const t = String(product.tag || "").trim();
+  tagEl.textContent = (t === "leadtime_10_15") ? "較長備貨（10-15天）" : "";
+  tagEl.style.display = tagEl.textContent ? "inline-block" : "none";
+}
     if (detailDesc) detailDesc.innerHTML = product.detailHtml || "";
 
     // 1) 建立「整個商品」全圖庫 + 全縮圖列（只做一次）
@@ -330,6 +336,15 @@ function getCartQty(productId, specKey) {
   function setDetailSpec(productId, specKey) {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
+	
+	// ✅ 每次切款式都重新確認備貨標籤顯示（避免被其它提示覆蓋）
+const tagEl = document.getElementById("detailTagNote");
+if (tagEl) {
+  const t = String(product.tag || "").trim();
+  tagEl.textContent = (t === "leadtime_10_15") ? "較長備貨（10-15天）" : "";
+  tagEl.style.display = tagEl.textContent ? "inline-block" : "none";
+}
+
 
     const spec = (product.specs || []).find((s) => s.key === specKey);
     if (!spec) return;
@@ -865,10 +880,19 @@ const inCartQty = getCartQty(currentDetailProductId, specKey);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
     }
 
-    const shuffled = order
-      .map(id => baseList.find(p => p.id === id))
-      .filter(Boolean)
-      .slice(0, HERO_LIMIT);
+let shuffled = order
+  .map(id => baseList.find(p => p.id === id))
+  .filter(Boolean)
+  .slice(0, HERO_LIMIT);
+
+// ✅ 修復：如果 localStorage 的 id 都找不到（shuffled 空）就改用 baseList 前幾筆
+if (!shuffled.length) {
+  shuffled = baseList.slice(0, HERO_LIMIT);
+  // 也順便重建一次 order，避免下次還是空
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(shuffled.map(p => p.id)));
+  } catch {}
+}
 
     shuffled.forEach((p, i) => {
       const imgRaw =
