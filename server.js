@@ -470,6 +470,44 @@ function safeJson(v, fallback) {
   return v;
 }
 
+const STORAGE_BUCKET = process.env.SUPABASE_BUCKET || 'product-images';
+
+function storagePathFromUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return null;
+
+  if (!/^https?:\/\//i.test(u)) return u.replace(/^\/+/, '');
+
+  const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+  const idx = u.indexOf(marker);
+  if (idx >= 0) return u.slice(idx + marker.length).replace(/^\/+/, '');
+
+  return null;
+}
+
+function collectProductImagePaths(productRow) {
+  const paths = new Set();
+
+  const imageUrl = productRow?.imageUrl;
+  const p1 = storagePathFromUrl(imageUrl);
+  if (p1) paths.add(p1);
+
+  const detailImages = safeJson(productRow?.detailImages, safeJson(productRow?.detailImagesJson, [])) || [];
+  for (const u of detailImages) {
+    const p = storagePathFromUrl(u);
+    if (p) paths.add(p);
+  }
+
+  const variants = safeJson(productRow?.variants, safeJson(productRow?.variantsJson, [])) || [];
+  for (const v of variants) {
+    const p = storagePathFromUrl(v?.imageUrl);
+    if (p) paths.add(p);
+  }
+
+  return [...paths];
+}
+
+
 function computeTotalStock(variants) {
   try {
     if (!Array.isArray(variants) || variants.length === 0) return null;
@@ -549,12 +587,33 @@ async function dbUpdateProduct(id, payload) {
 }
 
 async function dbDeleteProduct(id) {
+  // 1) 先抓商品資料（為了拿到圖片路徑）
+  const p = await dbGetProductById(id);
+  if (!p) return;
+
+  // 2) 刪 Storage 圖檔（最佳努力：失敗不阻擋刪商品）
+  try {
+    const paths = collectProductImagePaths(p);
+    if (paths.length > 0) {
+      const { error: serr } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove(paths);
+
+      if (serr) console.warn('⚠️ storage remove failed:', serr);
+    }
+  } catch (e) {
+    console.warn('⚠️ storage remove exception:', e);
+  }
+
+  // 3) 再刪 products 那列
   const { error } = await supabase
     .from('products')
     .delete()
     .eq('id', id);
+
   if (error) throw error;
 }
+
 
 async function dbListOrdersAdmin() {
   const { data, error } = await supabase
