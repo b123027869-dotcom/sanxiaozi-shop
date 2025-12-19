@@ -103,6 +103,8 @@ function getAvailableStock(product, specKey) {
   return Infinity; // 沒有 stock 欄位就不擋
 }
 
+
+
 function getCartQty(productId, specKey) {
   return cartItems
     .filter((x) => x.productId === productId && x.specKey === specKey)
@@ -370,54 +372,24 @@ if (tagEl) {
       });
     }
 	
-	  // ✅ 庫存提示 + 缺貨禁用（顯示給客戶看，不噴錯誤碼）
-  const available = getAvailableStock(product, currentDetailSpecKey);
-  const noteEl = document.getElementById("detailPriceNote");
-  const addBtn = document.getElementById("detailAddBtn");
+// ✅ 庫存提示（0 也可下單：顯示備貨提示，不鎖按鈕）
+const available = getAvailableStock(product, currentDetailSpecKey);
+const noteEl = document.getElementById("detailPriceNote");
+const addBtn = document.getElementById("detailAddBtn");
 
-  if (noteEl) noteEl.textContent = "";
-  if (addBtn) addBtn.disabled = false;
+if (noteEl) noteEl.textContent = "";
+if (addBtn) addBtn.disabled = false;
 
-  if (available !== Infinity) {
-    if (available <= 0) {
-      if (noteEl) noteEl.textContent = "（此款式庫存不足 / 已售完）";
-      if (addBtn) addBtn.disabled = true;
-    } else {
-      if (noteEl) noteEl.textContent = `（剩餘庫存：${available}）`;
-    }
+if (available !== Infinity) {
+  if (available <= 0) {
+    if (noteEl) noteEl.textContent = "庫存：0（可下單需較長備貨）";
+    if (addBtn) addBtn.disabled = false; // ✅ 不鎖
+  } else {
+    if (noteEl) noteEl.textContent = `（剩餘庫存：${available}）`;
+    if (addBtn) addBtn.disabled = false;
   }
+}
 
-  }
-
-  function setMainImageByIndex(nextIdx, { syncThumb = true } = {}) {
-    const imgs = detailGallery.images || [];
-    if (!imgs.length) return;
-
-    const idx = (nextIdx + imgs.length) % imgs.length;
-    detailGallery.index = idx;
-
-    const url = resolveImgUrl(imgs[idx]);
-    if (detailMainImg) detailMainImg.src = url;
-
-    if (syncThumb && detailThumbs) {
-      const thumbs = Array.from(detailThumbs.querySelectorAll("img"));
-      thumbs.forEach((t) => t.classList.remove("active"));
-      const hit = thumbs.find((t) => t.dataset.raw === imgs[idx]);
-      if (hit) {
-        hit.classList.add("active");
-        hit.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-      }
-    }
-
-    if (detailMainImg) {
-      detailMainImg.onload = () => {
-        const w = detailMainImg.naturalWidth || 0;
-        const h = detailMainImg.naturalHeight || 0;
-        detailMainImg.classList.toggle("is-portrait", h > w);
-        detailMainImg.classList.toggle("is-landscape", w >= h);
-      };
-    }
-  }
 
   /* =========================================================
    * Lightbox (legacy #imgLightbox)
@@ -747,10 +719,12 @@ function updateCartButtonCount() {
     // ✅ 庫存檢查（沿用你既有規則：spec stock 優先，再 product stock）
     const p = products.find((x) => x.id === item.productId);
     const available = getAvailableStock(p, item.specKey);
-    if (available !== Infinity && nextQty > available) {
-      alert(`庫存不足～此款式最多 ${available} 件 🤍`);
-      return;
-    }
+if (available !== Infinity && available > 0 && nextQty > available) {
+  alert(`庫存不足～此款式最多 ${available} 件 🤍`);
+  return;
+}
+// available <= 0：允許備貨，不擋
+
 
     item.qty = nextQty;
     updateCartSummaryUI();
@@ -815,24 +789,16 @@ function bindAddToCart() {
 const availableStock = getAvailableStock(product, specKey);
 const inCartQty = getCartQty(currentDetailProductId, specKey);
 
+// ✅ 庫存非 0：不允許超過庫存（含購物車既有數量）
+// ✅ 庫存 = 0：允許下單（視為備貨）
+if (availableStock !== Infinity && availableStock > 0) {
+  const nextTotal = inCartQty + qty;
+  if (nextTotal > availableStock) {
+    alert(`庫存不足～此款式最多 ${availableStock} 件 🤍`);
+    return;
+  }
+}
 
-    /* =========================
-       ✅ 3️⃣ 庫存不足 → 溫柔提示（不顯示錯誤碼）
-    ========================= */
-    if (availableStock !== Infinity) {
-      if (availableStock <= 0) {
-        alert("這個款式目前庫存不足或已售完 🥲\n可以換其他款式看看唷～");
-        return;
-      }
-
-      if (inCartQty + qty > availableStock) {
-        alert(
-          `庫存不足～目前此款式剩 ${availableStock} 件。\n` +
-          `你的購物車已有 ${inCartQty} 件，請調整數量或選擇其他款式 🤍`
-        );
-        return;
-      }
-    }
 
     /* =========================
        ✅ 4️⃣ 正常加入購物車
@@ -1424,23 +1390,40 @@ if (address.length < 4) {
         const items = cartItems.map((it) => {
           const p = products.find((x) => x.id === it.productId);
           const spec = (p?.specs || []).find((s) => s.key === it.specKey) || null;
-          return {
-            productId: it.productId,
-            specKey: it.specKey,
-            specLabel: spec?.label || "",
-            name: p?.name || "",
-            price: Number(p?.price || 0) || 0,
-            qty: Number(it.qty || 0) || 0,
-            tag: p?.tag || ""
-          };
+return {
+  productId: it.productId,
+  specKey: it.specKey,
+  specLabel: spec?.label || "",
+  name: p?.name || "",
+  price: Number(p?.price || 0) || 0,
+  qty: Number(it.qty || 0) || 0,
+  tag: p?.tag || "",
+
+  // ✅ 新增：是否為備貨（庫存=0）
+  backorder: (() => {
+    const available = getAvailableStock(p, it.specKey);
+    return (available !== Infinity && available <= 0);
+  })(),
+
+  // ✅ 新增：顯示用備註（給後台/Email）
+  backorderNote: (() => {
+    const available = getAvailableStock(p, it.specKey);
+    return (available !== Infinity && available <= 0) ? "需較長備貨" : "";
+  })(),
+};
+
         }).filter(x => x.productId && x.qty > 0);
 
 // ✅ 付款方式：用表單選到的 pay（你上面已經 const pay = ... 了）
 // 如果你想「強制都走綠界」，用 payMethod 這個名字，別用 pay 來遮蔽
 const payMethod = String(pay || "").toLowerCase(); // pay 來自外層：checkoutPay
+// ✅ 如果購物車裡有任何「庫存=0」的商品，就在訂單備註加一句提醒
+const hasBackorder = items.some(x => x.backorder === true);
+const backorderMsg = hasBackorder ? "【本筆訂單含需較長備貨商品】" : "";
+const finalNote = [backorderMsg, note].filter(Boolean).join(" ");
 
 const payload = {
-  customer: { name, phone, email, address, line, ship, pay: payMethod, note },
+  customer: { name, phone, email, address, line, ship, pay: payMethod, note: finalNote },
   items
 };
 

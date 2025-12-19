@@ -678,17 +678,17 @@ async function dbInsertOrder(order) {
 
 /* =========================================================
  * Stock deduction (best-effort atomic update with retry)
- * - 若你要 100% 併發安全：我之後會給你一個 Postgres RPC function 版本
+ * - 支援：款式庫存、總庫存、預購(用負數累積)、預購上限
  * ========================================================= */
 async function deductStockForItems(items) {
-  // 先檢查 + 扣庫存：逐項處理，遇到不足就 throw
-  // 這裡做 "讀 -> 算 -> 條件更新"（eq(stock,oldStock)）並重試，降低併發風險
   const tagMap = {}; // productId -> tag
+  const PREORDER_LIMIT_DEFAULT = 20; // ✅ 預購/備貨上限（要幾件就改這裡）
 
-  for (const it of items) {
-    const pid = it.productId;
-    const specKey = it.specKey || null;
+  for (const it of (items || [])) {
+    const pid = Number(it.productId);
+    const specKey = (it.specKey != null && String(it.specKey).trim() !== '') ? String(it.specKey).trim() : null;
     const qty = Number(it.qty || 0);
+
     if (!pid || qty <= 0) continue;
 
     let ok = false;
@@ -698,53 +698,81 @@ async function deductStockForItems(items) {
       const p = await dbGetProductById(pid);
       if (!p) throw new Error('扣庫存時找不到商品');
 
-      const stock = Number(p.stock || 0);
+      const stock = Number(p.stock || 0); // 允許負數：代表預購已售
       const variants = safeJson(p.variants, safeJson(p.variantsJson, [])) || [];
-      const tag = p.tag || '';
+      const tag = String(p.tag || '').trim();
       tagMap[pid] = tag;
 
+      // ====== A) 有款式 ======
       if (specKey && Array.isArray(variants) && variants.length > 0) {
-        const v = variants.find(v => v?.name === specKey || v?.key === specKey);
+        const v = variants.find(x => String(x?.name || x?.key || '').trim() === specKey);
         if (!v) throw new Error('找不到該款式');
-        const vStock = Number(v.stock || 0);
-        if (vStock < qty) {
-          const e = new Error('部分商品庫存不足');
-          e.insufficient = [{ productId: pid, specKey, remain: vStock, want: qty }];
-          throw e;
+
+        const vStock = Number(v.stock || 0); // 允許負數：款式預購已售
+
+        // 款式庫存 > 0：正常扣；<=0：預購模式（用負數累積）
+        if (vStock > 0) {
+          if (vStock < qty) {
+            const e = new Error('部分商品庫存不足');
+            e.insufficient = [{ productId: pid, specKey, remain: vStock, want: qty }];
+            throw e;
+          }
+          v.stock = vStock - qty;
+        } else {
+          const sold = Math.abs(vStock);
+          const remaining = PREORDER_LIMIT_DEFAULT - sold;
+          if (qty > remaining) {
+            const e = new Error('此款式預購已達上限');
+            e.insufficient = [{ productId: pid, specKey, remain: remaining, want: qty }];
+            throw e;
+          }
+          v.stock = vStock - qty; // 0 -> -qty -> -qty2...
         }
-        v.stock = Math.max(0, vStock - qty);
 
-        // 總庫存也跟著減（保留你原本邏輯）
-        const newStock = Math.max(0, stock - qty);
+        // 商品總庫存：為了讓前台能顯示「剩餘/已售」一致，這裡也用同樣方式扣（可變負數）
+        const newStock = stock - qty;
 
-        // 條件更新（用 old stock 當條件）
         const { error } = await supabase
           .from('products')
           .update({ stock: newStock, variants })
           .eq('id', pid)
-          .eq('stock', stock);
-
-        if (!error) { ok = true; break; }
-        lastErr = error;
-        continue;
-      } else {
-        if (stock < qty) {
-          const e = new Error('部分商品庫存不足');
-          e.insufficient = [{ productId: pid, specKey: null, remain: stock, want: qty }];
-          throw e;
-        }
-
-        const newStock = Math.max(0, stock - qty);
-        const { error } = await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', pid)
-          .eq('stock', stock);
+          .eq('stock', stock); // 樂觀鎖
 
         if (!error) { ok = true; break; }
         lastErr = error;
         continue;
       }
+
+      // ====== B) 無款式（只有商品總庫存） ======
+      let newStock = stock;
+
+      if (stock > 0) {
+        if (stock < qty) {
+          const e = new Error('部分商品庫存不足');
+          e.insufficient = [{ productId: pid, specKey: null, remain: stock, want: qty }];
+          throw e;
+        }
+        newStock = stock - qty;
+      } else {
+        // 預購模式：stock <= 0 用負數累積
+        const sold = Math.abs(stock);
+        const remaining = PREORDER_LIMIT_DEFAULT - sold;
+        if (qty > remaining) {
+          const e = new Error('此商品預購已達上限');
+          e.insufficient = [{ productId: pid, specKey: null, remain: remaining, want: qty }];
+          throw e;
+        }
+        newStock = stock - qty; // 0 -> -qty -> -qty2...
+      }
+
+      const { error } = await supabase
+        .from('products')
+        .update({ stock: newStock })
+        .eq('id', pid)
+        .eq('stock', stock); // 樂觀鎖
+
+      if (!error) { ok = true; break; }
+      lastErr = error;
     }
 
     if (!ok) {
@@ -752,6 +780,9 @@ async function deductStockForItems(items) {
       throw new Error('更新庫存失敗（可能同時下單，請重試）');
     }
   }
+
+  return tagMap;
+}
 
   return tagMap;
 }
@@ -841,6 +872,11 @@ app.post('/api/orders', async (req, res) => {
     if (!customer || !customer.name || !customer.phone || !customer.email) {
       return res.status(400).json({ ok: false, message: '缺少必要的顧客資料' });
     }
+	const email = String(customer.email || '').trim();
+const atCount = (email.match(/@/g) || []).length;
+if (atCount !== 1) {
+  return res.status(400).json({ ok: false, message: 'Email 格式不正確，@ 只能有一個，請修改後再送出' });
+}
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ ok: false, message: '購物車是空的' });
     }
@@ -850,9 +886,43 @@ app.post('/api/orders', async (req, res) => {
     const SHIPPING_FEE = 100;
     const SHIP_METHODS_WITH_FEE = new Set(['711', 'family', 'hilife', 'ok', 'home']);
 
-    const subtotal = items.reduce((sum, it) => {
-      return sum + (Number(it.price || 0) * Number(it.qty || 0));
-    }, 0);
+   // ✅ 1) 後端重算商品單價（不信任前端 price / name / tag）
+const normalizedItems = [];
+for (const it of items) {
+  const pid = Number(it.productId);
+  const qty = Number(it.qty || 0);
+
+  if (!pid || qty <= 0) continue;
+
+  const p = await dbGetProductById(pid);
+  if (!p) {
+    return res.status(400).json({ ok: false, message: "購物車內有不存在的商品" });
+  }
+
+  const serverPrice = Number(p.price || 0) || 0;
+  const serverTag = String(p.tag || "").trim();
+
+  const specKey = String(it.specKey || it.key || it.spec || "").trim() || null;
+  const specLabel = String(it.specLabel || "").trim();
+
+  normalizedItems.push({
+    productId: pid,
+    qty,
+    specKey,
+    specLabel,
+    price: serverPrice,  // ✅ 強制用後端價格
+    name: p.name || "",
+    tag: serverTag
+  });
+}
+
+if (normalizedItems.length === 0) {
+  return res.status(400).json({ ok: false, message: "購物車是空的" });
+}
+
+// ✅ 2) subtotal 用後端重算的 items 來算（杜絕改價）
+const subtotal = normalizedItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+
 
     // Read shipType from possible fields
     let shipType =
@@ -892,16 +962,17 @@ let payStatus = "unpaid";
 if (["card", "atm", "linepay"].includes(payMethod)) payStatus = "pending";
 
     // ✅ 先扣庫存（若不足會 throw）
-    const tagMap = await deductStockForItems(items);
+    const tagMap = await deductStockForItems(normalizedItems);
 
-    // ✅ Split orders: 現貨 / 備貨(10-15天) 分開出單
-    const normalizedItems = (items || []).map(it => ({
-      ...it,
-      tag: it.tag || tagMap[it.productId] || ''
-    }));
+// ✅ normalizedItems 已經是後端重建好的；這裡只保險補上 tagMap
+const finalItems = normalizedItems.map(it => ({
+  ...it,
+  tag: it.tag || tagMap[it.productId] || ''
+}));
 
-    const leadtimeItems = normalizedItems.filter(it => it.tag === 'leadtime_10_15');
-    const stockItems = normalizedItems.filter(it => it.tag !== 'leadtime_10_15');
+
+const leadtimeItems = finalItems.filter(it => it.tag === 'leadtime_10_15');
+const stockItems = finalItems.filter(it => it.tag !== 'leadtime_10_15');
 
     const now = new Date().toISOString();
 
@@ -922,7 +993,7 @@ if (["card", "atm", "linepay"].includes(payMethod)) payStatus = "pending";
       paymentStatus: payStatus,
       paidAt: null,
 
-      items: normalizedItems,
+      items: finalItems,
       customer: fixedCustomer
     };
 
