@@ -245,6 +245,28 @@ function getCartQty(productId, specKey) {
     index: 0,
   };
 
+// ✅ 缺少：切換商品詳情主圖（同步縮圖 active、同步目前 index）
+function setMainImageByIndex(nextIndex) {
+  const imgs = detailGallery.images || [];
+  if (!imgs.length) return;
+
+  // 修正 index 範圍（支援 -1、超過長度）
+  const safe = (nextIndex + imgs.length) % imgs.length;
+  detailGallery.index = safe;
+
+  // 1) 更新主圖
+  if (detailMainImg) {
+    detailMainImg.src = resolveImgUrl(imgs[safe]);
+  }
+
+  // 2) 同步縮圖 active
+  if (detailThumbs) {
+    const thumbs = Array.from(detailThumbs.querySelectorAll("img"));
+    thumbs.forEach((t, i) => t.classList.toggle("active", i === safe));
+  }
+}
+
+
   function openProduct(productId) {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
