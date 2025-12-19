@@ -389,7 +389,7 @@ if (available !== Infinity) {
     if (addBtn) addBtn.disabled = false;
   }
 }
-
+}
 
   /* =========================================================
    * Lightbox (legacy #imgLightbox)
