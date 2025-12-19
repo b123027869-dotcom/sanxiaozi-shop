@@ -784,8 +784,6 @@ async function deductStockForItems(items) {
   return tagMap;
 }
 
-  return tagMap;
-}
 
 /* =========================================================
  * Front: products list (only status=on)
