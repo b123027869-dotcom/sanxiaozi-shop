@@ -738,15 +738,13 @@
   </main>
 
   <script>
-    /* =========================================================
-     * Config
-     * ========================================================= */
+// Supabase 設定（前端上傳用）
+const SUPABASE_URL = 'https://ckqdimygblkasofycwvr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_U_ddXefuPHjG2gVvO5p3bQ_OrTAK1hl';
+const IMAGE_BUCKET = 'product-images';
 
-    // Supabase 設定（前端上傳用）
-    const SUPABASE_URL = 'https://ckqdimygblkasofycwvr.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_U_ddXefuPHjG2gVvO5p3bQ_OrTAK1hl';
-    const IMAGE_BUCKET = 'product-images';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ✅ 改名：不要用 supabase 當變數名
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // API Base（部署後請改成 Render 網址，或留空用相對路徑）
     const API_BASE =
@@ -1656,7 +1654,10 @@ currentDetailImages.forEach((url) => {
       removeBtn.type = 'button';
       removeBtn.className = 'btn-small';
       removeBtn.textContent = '刪除';
-      removeBtn.addEventListener('click', () => row.remove());
+      removeBtn.addEventListener('click', () => {
+  row.remove();
+  setTimeout(refreshTotalStockUI, 0);
+});
 
       row.appendChild(nameInput);
       row.appendChild(stockInput);
@@ -1689,11 +1690,13 @@ currentDetailImages.forEach((url) => {
       return variants;
     }
 
-    function setVariantsInForm(variants) {
-      variantsContainer.innerHTML = '';
-      (variants || []).forEach(v => addVariantRow(v));
-      updateVariantImageOptions();
-    }
+function setVariantsInForm(variants) {
+  variantsContainer.innerHTML = '';
+  (variants || []).forEach(v => addVariantRow(v));
+  updateVariantImageOptions();
+  setTimeout(refreshTotalStockUI, 0); // ✅ 載入商品/回填款式後立刻刷新總庫存
+}
+
 
     addVariantBtn.addEventListener('click', () => addVariantRow());
 
@@ -1771,14 +1774,14 @@ const fileName = `${Date.now()}-${safeBase}-${i}.${ext}`;
 
           const filePath = 'detail/' + fileName;
 
-          const p = supabase
+          const p = sb
             .storage
             .from(IMAGE_BUCKET)
             .upload(filePath, file, { cacheControl: '3600', upsert: false })
             .then(({ error }) => {
               if (error) throw error;
 
-              const { data: publicData } = supabase
+              const { data: publicData } = sb
                 .storage
                 .from(IMAGE_BUCKET)
                 .getPublicUrl(filePath);
@@ -1825,14 +1828,14 @@ const fileName = `${Date.now()}-${safeBase}-${i}.${ext}`;
 
         const filePath = 'test/' + fileName;
 
-        const { error } = await supabase
+        const { error } = await sb
           .storage
           .from(IMAGE_BUCKET)
           .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
         if (error) throw error;
 
-        const { data: publicData } = supabase
+        const { data: publicData } = sb
           .storage
           .from(IMAGE_BUCKET)
           .getPublicUrl(filePath);
@@ -1855,49 +1858,53 @@ const fileName = `${Date.now()}-${safeBase}-${i}.${ext}`;
     });
   </script>
 <script>
-// ===== Auto total stock (read-only) =====
+/* ===== Auto total stock (for #productStock) ===== */
+
 function calcTotalStockFromVariants(variants) {
   try {
     if (!Array.isArray(variants) || variants.length === 0) return null;
     return variants.reduce((s, v) => s + (Number(v?.stock || 0) || 0), 0);
-  } catch { return null; }
-}
-
-function refreshTotalStockUI() {
-  const stockInput = document.getElementById('pStock') || document.querySelector('input[name="stock"]');
-  if (!stockInput) return;
-
-  // 假設你後台用 currentVariants / variantsArray 之類的全域變數（我們做多種兼容）
-  const variants =
-    window.currentVariants ||
-    window.variants ||
-    window.variantsArray ||
-    (typeof getVariantsFromForm === 'function' ? getVariantsFromForm() : null) ||
-    null;
-
-  const total = calcTotalStockFromVariants(variants);
-  if (total == null) {
-    // 沒有款式：就顯示目前的值，但仍維持唯讀（避免手滑）
-    stockInput.value = Number(stockInput.value || 0) || 0;
-  } else {
-    stockInput.value = total;
+  } catch {
+    return null;
   }
 }
 
-// 監聽：只要你改款式庫存，就更新總庫存
+function refreshTotalStockUI() {
+  // ✅ 你的總庫存欄位是這個 id
+  const stockInput = document.getElementById('productStock');
+  if (!stockInput) return;
+
+  // ✅ 直接用你本頁已存在的 getVariantsFromForm()
+  const variants = (typeof getVariantsFromForm === 'function') ? getVariantsFromForm() : null;
+
+  const total = calcTotalStockFromVariants(variants);
+
+  if (total == null) {
+    // 沒有款式 → 允許手動輸入
+    stockInput.readOnly = false;
+    return;
+  }
+
+  // 有款式 → 自動加總 + 鎖住避免手改
+  stockInput.value = total;
+  stockInput.readOnly = true;
+}
+
+/* ✅ 只監聽「款式庫存」欄位即可（避免你改總庫存時又觸發自己） */
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (!t) return;
-  // 常見：款式庫存 input 會有 class / name 包含 stock
-  if ((t.name && t.name.toLowerCase().includes('stock')) || (t.className && String(t.className).toLowerCase().includes('stock'))) {
-    // 讓既有程式先更新 variants，再來算總庫存
+
+  if (t.classList && t.classList.contains('variant-stock')) {
+    // 讓該次輸入完成後再刷新
     setTimeout(refreshTotalStockUI, 0);
   }
 });
 
-// 載入後先算一次
+/* ✅ 初次載入 */
 window.addEventListener('load', () => setTimeout(refreshTotalStockUI, 0));
 </script>
+
 
 </body>
 </html>
